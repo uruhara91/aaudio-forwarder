@@ -4,19 +4,20 @@
 #include <aaudio/AAudio.h>
 #include <vector>
 #include <atomic>
-#include <queue>
 #include <mutex>
+#include <condition_variable>
 
 class AAudioCapture {
 private:
     AAudioStream* stream = nullptr;
     std::atomic<bool> isRunning{false};
     
-    // Ring buffer components
-    std::queue<std::vector<int16_t>> audioQueue;
-    std::mutex queueMutex;
+    std::vector<int16_t> audioBuffer;
+    bool hasNewData = false;
     
-    // Callbacks
+    std::mutex queueMutex;
+    std::condition_variable dataCondition;
+
     static aaudio_data_callback_result_t dataCallback(
         AAudioStream* stream,
         void* userData,
@@ -35,7 +36,8 @@ public:
     bool initialize(int sampleRate, int channelCount);
     bool start();
     void stop();
-    bool getAudioData(std::vector<int16_t>& outData);
+
+    bool waitForAudioData(std::vector<int16_t>& outData); 
 };
 
-#endif // AUDIO_CAPTURE_H
+#endif

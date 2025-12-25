@@ -6,10 +6,8 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// Constructor
 AAudioCapture::AAudioCapture() {}
 
-// Destructor
 AAudioCapture::~AAudioCapture() {
     stop();
     if (stream) {
@@ -18,7 +16,6 @@ AAudioCapture::~AAudioCapture() {
     }
 }
 
-// Callbacks
 aaudio_data_callback_result_t AAudioCapture::dataCallback(
     AAudioStream* stream,
     void* userData,
@@ -26,17 +23,20 @@ aaudio_data_callback_result_t AAudioCapture::dataCallback(
     int32_t numFrames) {
     
     auto* capture = static_cast<AAudioCapture*>(userData);
-    auto* data = static_cast<int16_t*>(audioData);
-    
-    // Stereo = numFrames * 2
-    std::vector<int16_t> buffer(data, data + numFrames * 2); 
+    int32_t numSamples = numFrames * AAudioStream_getChannelCount(stream);
     
     {
-        std::lock_guard<std::mutex> lock(capture->queueMutex);
-        if (capture->audioQueue.size() < 10) { 
-            capture->audioQueue.push(std::move(buffer));
+        std::lock_guard<std::mutex> lock(capture->dataMutex);
+        
+        if (capture->internalBuffer.size() != numSamples) {
+            capture->internalBuffer.resize(numSamples);
         }
+        
+        memcpy(capture->internalBuffer.data(), audioData, numSamples * sizeof(int16_t));
+        capture->hasNewData = true;
     }
+    
+    capture->dataCondition.notify_one();
     
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
@@ -48,15 +48,9 @@ void AAudioCapture::errorCallback(
     LOGE("AAudio error: %s", AAudio_convertResultToText(error));
 }
 
-// Initialization
 bool AAudioCapture::initialize(int sampleRate, int channelCount) {
     AAudioStreamBuilder* builder = nullptr;
-    
-    aaudio_result_t result = AAudio_createStreamBuilder(&builder);
-    if (result != AAUDIO_OK) {
-        LOGE("Failed to create stream builder: %s", AAudio_convertResultToText(result));
-        return false;
-    }
+    AAudio_createStreamBuilder(&builder);
     
     AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_INPUT);
     AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_EXCLUSIVE);
@@ -64,48 +58,46 @@ bool AAudioCapture::initialize(int sampleRate, int channelCount) {
     AAudioStreamBuilder_setSampleRate(builder, sampleRate);
     AAudioStreamBuilder_setChannelCount(builder, channelCount);
     AAudioStreamBuilder_setFormat(builder, AAUDIO_FORMAT_PCM_I16);
-    
-    // Set callbacks
     AAudioStreamBuilder_setDataCallback(builder, dataCallback, this);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, this);
     
-    // Buffer optimization
     AAudioStreamBuilder_setFramesPerDataCallback(builder, 192);
     
-    result = AAudioStreamBuilder_openStream(builder, &stream);
+    aaudio_result_t result = AAudioStreamBuilder_openStream(builder, &stream);
     AAudioStreamBuilder_delete(builder);
     
     if (result != AAUDIO_OK) {
-        LOGE("Failed to open stream: %s", AAudio_convertResultToText(result));
+        LOGE("Open stream failed: %s", AAudio_convertResultToText(result));
         return false;
     }
-    
     return true;
 }
 
-// Start
 bool AAudioCapture::start() {
     if (!stream) return false;
-    aaudio_result_t result = AAudioStream_requestStart(stream);
-    if (result != AAUDIO_OK) return false;
+    internalBuffer.reserve(4096);
     isRunning = true;
-    return true;
+    return AAudioStream_requestStart(stream) == AAUDIO_OK;
 }
 
-// Stop
 void AAudioCapture::stop() {
-    if (stream && isRunning) {
-        AAudioStream_requestStop(stream);
+    if (stream) {
         isRunning = false;
+
+        dataCondition.notify_all(); 
+        AAudioStream_requestStop(stream);
     }
 }
 
-// Get Audio Data
-bool AAudioCapture::getAudioData(std::vector<int16_t>& outData) {
-    std::lock_guard<std::mutex> lock(queueMutex);
-    if (audioQueue.empty()) return false;
+bool AAudioCapture::waitForAudioData(std::vector<int16_t>& outData) {
+    std::unique_lock<std::mutex> lock(dataMutex);
+
+    dataCondition.wait(lock, [this]{ return hasNewData || !isRunning; });
     
-    outData = std::move(audioQueue.front());
-    audioQueue.pop();
+    if (!isRunning) return false;
+    
+    outData = internalBuffer;
+    hasNewData = false;
+    
     return true;
 }

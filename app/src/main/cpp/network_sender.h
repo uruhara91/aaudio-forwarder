@@ -14,6 +14,8 @@ private:
     struct sockaddr_in serverAddr;
     std::atomic<bool> isConnected{false};
     
+    std::vector<uint8_t> packetBuffer;
+    
     // Stats
     std::atomic<uint64_t> bytesSent{0};
     std::atomic<uint32_t> packetsSent{0};
@@ -26,7 +28,6 @@ public:
     bool connect(const char* ipAddress, int port);
     bool sendAudioPacket(const std::vector<int16_t>& audioData);
     
-    // TCP variants
     bool connectTCP(const char* ipAddress, int port);
     bool sendTCP(const std::vector<int16_t>& audioData);
     
