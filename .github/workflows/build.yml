@@ -25,27 +25,36 @@ jobs:
         ndk-version: r26b
         add-to-path: true
     
-    - name: Setup Gradle
+    # --- MODIFIKASI: MATIKAN CACHE & DAEMON ---
+    - name: Setup Gradle (No Cache)
       uses: gradle/gradle-build-action@v2
       with:
         gradle-version: 8.2
+        cache-read-only: false # Paksa overwrite
+        # Kita coba tetap pakai action ini tapi kita paksa command line di bawah
     
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
-    # --- DIAGNOSA MODE: KITA PAKAI DEBUG DULU ---
-    # Debug tidak butuh keystore, jadi kalau ini gagal, berarti kodingannya yang salah.
-    # Kalau ini berhasil, berarti keystore release kamu yang rusak.
-    - name: Build APK DEBUG
-      run: ./gradlew assembleDebug --stacktrace
+    - name: Clean Build
+      run: ./gradlew clean
+      
+    - name: Build APK DEBUG (No Daemon)
+      # --no-daemon: Biar gak nyimpen process sampah di background
+      # --no-build-cache: Jangan baca cache lokal yang mungkin korup
+      # --stacktrace: Biar kalau error kelihatan detailnya
+      run: ./gradlew assembleDebug --no-daemon --no-build-cache --stacktrace
     
-    - name: List Output Files (Cek APK)
+    # Debugging Folder (Cek apakah folder app/build/outputs terbentuk?)
+    - name: List All Files (Debug)
+      if: always() # Tetap jalan biarpun build gagal
       run: |
-        echo "=== CEK FOLDER DEBUG ==="
-        ls -R app/build/outputs/apk/ || echo "Folder APK gak ada!"
+        echo "Cek isi folder build..."
+        ls -R app/build/ || echo "Folder app/build GAK ADA"
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: aaudio-forwarder-debug
+        # Kita cari di semua folder build, jaga-jaga dia nyasar
         path: app/build/outputs/apk/**/*.apk
