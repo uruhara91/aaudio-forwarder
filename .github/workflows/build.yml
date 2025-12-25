@@ -3,6 +3,7 @@ name: Build AAudio Forwarder
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ] # Menambahkan trigger tag agar Create Release berjalan
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -21,12 +22,17 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+    # Menggunakan NDK dari spek lama yang sukses
+    - name: Setup Android NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r26b
+        add-to-path: true
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    # Optimasi Cache
     - name: Cache Gradle packages
       uses: actions/cache@v3
       with:
@@ -37,35 +43,30 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-gradle-
 
+    # Decode Keystore sebelum build agar bisa dipakai Gradle (seperti di spek lama)
+    - name: Decode Keystore
+      if: secrets.KEYSTORE_BASE64 != ''
+      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release-key.jks
+
+    # Build menggunakan gradlew (wrapper) dengan env secrets
     - name: Build Release APK
       run: ./gradlew assembleRelease --no-daemon
-
-    - name: Sign APK (if keystore available)
-      if: ${{ secrets.KEYSTORE_BASE64 != '' }}  # Tambahkan pengecekan eksplisit
       env:
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
-          -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-          -keypass "${{ secrets.KEY_PASSWORD }}" \
-          app/build/outputs/apk/release/app-release-unsigned.apk \
-          upload
-        zipalign -v 4 \
-          app/build/outputs/apk/release/app-release-unsigned.apk \
-          app/build/outputs/apk/release/app-release.apk
+        STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
 
-    - name: Upload APK
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: aaudio-forwarder-release
-        path: app/build/outputs/apk/release/app-release.apk
+        path: app/build/outputs/apk/release/*.apk
         retention-days: 30
 
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
-        files: app/build/outputs/apk/release/app-release.apk
+        files: app/build/outputs/apk/release/*.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
