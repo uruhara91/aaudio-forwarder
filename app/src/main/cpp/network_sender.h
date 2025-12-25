@@ -14,21 +14,15 @@ private:
     struct sockaddr_in serverAddr;
     std::atomic<bool> isConnected{false};
     
-    std::vector<uint8_t> packetBuffer;
-    
     std::atomic<uint64_t> bytesSent{0};
-    std::atomic<uint32_t> packetsSent{0};
-    std::atomic<uint32_t> errors{0};
 
 public:
     NetworkSender();
     ~NetworkSender();
 
+    // Kita ubah implementasinya jadi TCP di file .cpp
     bool connect(const char* ipAddress, int port);
     bool sendAudioPacket(const std::vector<int16_t>& audioData);
-    
-    bool connectTCP(const char* ipAddress, int port);
-    bool sendTCP(const std::vector<int16_t>& audioData);
     
     void disconnect();
     bool isActive() const;
