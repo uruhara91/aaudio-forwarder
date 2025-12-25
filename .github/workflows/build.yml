@@ -1,8 +1,8 @@
-name: Build AAudio Forwarder
+name: Build AAudio Forwarder Release
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -25,28 +25,25 @@ jobs:
         ndk-version: r26b
         add-to-path: true
     
-    # Setup Gradle Global (Versi 8.2)
     - name: Setup Gradle
       uses: gradle/gradle-build-action@v2
       with:
         gradle-version: 8.2
-    
-    # --- PERUBAHAN UTAMA DI SINI ---
-    # Kita hapus step 'chmod +x' karena kita gak pake gradlew local.
-    
-    - name: Build APK DEBUG (Direct Binary)
-      # PENTING: Ganti './gradlew' jadi 'gradle'
-      # Ini menggunakan gradle yang diinstall oleh action di atas, bukan script di repomu.
-      run: gradle assembleDebug --stacktrace --no-daemon
-    
-    - name: List Output Files (Verification)
-      if: always()
+
+    - name: Decode Keystore
       run: |
-        echo "=== CEK HASIL BUILD ==="
-        find app/build/outputs/apk -name "*.apk" || echo "Masih kosong juga???"
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release-key.jks
     
+    - name: Build APK Release
+      run: gradle assembleRelease --no-daemon
+      env:
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+    
+    # 3. Upload Hasilnya
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: aaudio-forwarder-debug
-        path: app/build/outputs/apk/**/*.apk
+        name: aaudio-forwarder-release
+        path: app/build/outputs/apk/release/*.apk
