@@ -13,7 +13,7 @@
 - Android API 29+ (Android 10+)
 - NDK r25c atau lebih baru
 - Kotlin 1.9+
-- CMake 3.22.0+
+- CMake 3.22.1+
 
 ## 📦 Instalasi
 
