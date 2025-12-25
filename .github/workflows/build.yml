@@ -30,35 +30,22 @@ jobs:
       with:
         gradle-version: 8.2
     
-    - name: Decode Keystore
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release-key.jks
-    
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
-    # KITA PAKAI LOGGING EXTRA (--info) BIAR KETAHUAN KALAU ERROR
-    - name: Build APK Release (With Debug Info)
-      run: ./gradlew assembleRelease --info
-      env:
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+    # --- DIAGNOSA MODE: KITA PAKAI DEBUG DULU ---
+    # Debug tidak butuh keystore, jadi kalau ini gagal, berarti kodingannya yang salah.
+    # Kalau ini berhasil, berarti keystore release kamu yang rusak.
+    - name: Build APK DEBUG
+      run: ./gradlew assembleDebug --stacktrace
     
-    # --- JURUS MATA DEWA: Cari file APK di mana saja ---
-    - name: Debug - Find ALL APKs
+    - name: List Output Files (Cek APK)
       run: |
-        echo "=== MENCARI FILE APK DI SELURUH FOLDER ==="
-        find . -name "*.apk"
-        echo "=== CEK ISI FOLDER OUTPUT ==="
-        ls -R app/build/outputs/ || echo "Folder outputs gak ada!"
-    # ---------------------------------------------------
+        echo "=== CEK FOLDER DEBUG ==="
+        ls -R app/build/outputs/apk/ || echo "Folder APK gak ada!"
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: aaudio-forwarder-release
-        # Kita pakai wildcard super luas
-        path: |
-          **/*.apk
-          app/build/outputs/apk/*/*.apk
+        name: aaudio-forwarder-debug
+        path: app/build/outputs/apk/**/*.apk
