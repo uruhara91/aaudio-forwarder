@@ -2,18 +2,14 @@ name: Build AAudio Forwarder
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Kita buat variabel environment di sini agar bisa dicek di dalam 'if'
-    env:
-      HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
     
     steps:
     - name: Checkout code
@@ -25,14 +21,13 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Android NDK
-      uses: nttld/setup-ndk@v1
-      with:
-        ndk-version: r26b
-        add-to-path: true
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+      with:
+        gradle-version: 8.2
 
     - name: Cache Gradle packages
       uses: actions/cache@v3
@@ -40,34 +35,24 @@ jobs:
         path: |
           ~/.gradle/caches
           ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
-
-    # Memperbaiki pengecekan secret menggunakan env variable
-    - name: Decode Keystore
-      if: env.HAS_KEYSTORE == 'true'
-      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release-key.jks
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
 
     - name: Build Release APK
-      run: ./gradlew assembleRelease --no-daemon
-      env:
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+      run: gradle assembleRelease --no-daemon --stacktrace
 
-    - name: Upload APK Artifact
+    - name: Verify & Rename APK
+      run: |
+        APK_PATH="app/build/outputs/apk/release"
+        if [ -f "$APK_PATH/app-release-unsigned.apk" ]; then
+          mv "$APK_PATH/app-release-unsigned.apk" "$APK_PATH/app-release.apk"
+          echo "✅ APK built: $(du -h $APK_PATH/app-release.apk | cut -f1)"
+        else
+          echo "❌ APK not found!"
+          exit 1
+        fi
+
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: aaudio-forwarder-release
-        # Menggunakan wildcard agar tetap aman jika nama file berbeda sedikit
-        path: app/build/outputs/apk/release/*.apk
-        retention-days: 30
-
-    - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
-      with:
-        files: app/build/outputs/apk/release/*.apk
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: aaudio-forwarder-v2.0
+        path: app/build/outputs/apk/release/app-release.apk
