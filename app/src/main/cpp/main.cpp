@@ -3,6 +3,8 @@
 #include <thread>
 #include <atomic>
 #include <memory>
+#include "audio_capture.h"
+#include "network_sender.h"
 
 // #include "audio_capture.cpp"
 // #include "network_sender.cpp"
