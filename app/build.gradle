@@ -18,10 +18,6 @@ android {
             abiFilters 'arm64-v8a'
         }
 
-        // --- SIGNING CONFIGURATION ---
-        // Catatan: Saya comment bagian release key asli agar build tidak gagal 
-        // karena file JKS atau password environment variable tidak ditemukan di GitHub Actions.
-        /*
         signingConfigs {
             release {
                 storeFile file("release-key.jks")
@@ -30,7 +26,6 @@ android {
                 keyPassword System.getenv("KEY_PASSWORD")
             }
         }
-        */
     }
 
     externalNativeBuild {
