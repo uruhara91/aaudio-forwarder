@@ -6,6 +6,8 @@
 #include <atomic>
 #include <thread>
 #include <vector>
+#include <netinet/tcp.h> 
+#include <netinet/in.h>
 
 #define LOG_TAG "NetworkSender"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
