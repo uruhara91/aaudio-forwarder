@@ -61,7 +61,13 @@ class AudioForwardService : Service() {
             when (it.action) {
                 "START" -> {
                     val resultCode = it.getIntExtra("RESULT_CODE", 0)
-                    val data = it.getParcelableExtra<Intent>("DATA")
+                    // FIX DEPRECATION: Cara aman ambil Parcelable
+                    val data = if (Build.VERSION.SDK_INT >= 33) {
+                        it.getParcelableExtra("DATA", Intent::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        it.getParcelableExtra("DATA")
+                    }
                     val port = it.getIntExtra("PORT", 28200)
                     
                     if (resultCode != 0 && data != null) {
@@ -77,6 +83,7 @@ class AudioForwardService : Service() {
         return START_NOT_STICKY
     }
 
+    // ... (Sisa kode ke bawah SAMA PERSIS, tidak perlu diubah) ...
     private fun startCapture(resultCode: Int, data: Intent, port: Int) {
         isRunning = true
         captureThread = Thread {
@@ -95,7 +102,6 @@ class AudioForwardService : Service() {
     }
 
     private fun captureLoop(resultCode: Int, data: Intent, port: Int) {
-        // Setup MediaProjection
         val projectionManager = getSystemService(MediaProjectionManager::class.java)
         mediaProjection = projectionManager.getMediaProjection(resultCode, data)
 
@@ -117,7 +123,6 @@ class AudioForwardService : Service() {
             .setBufferSizeInBytes(BUFFER_SIZE * 4)
             .build()
 
-        // CLIENT MODE: Connect to PC (bukan wait for connection!)
         Log.i(TAG, "Connecting to PC:$port...")
         if (!connectToPC("127.0.0.1", port)) {
             Log.e(TAG, "Failed to connect to PC")
@@ -125,7 +130,6 @@ class AudioForwardService : Service() {
         }
         Log.i(TAG, "Connected to PC successfully!")
 
-        // Start recording
         audioRecord!!.startRecording()
         val buffer = ByteBuffer.allocateDirect(BUFFER_SIZE)
 
