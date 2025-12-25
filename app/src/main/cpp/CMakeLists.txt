@@ -1,25 +1,29 @@
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.18.1)
 
 project("aaudio_forwarder")
 
-add_library(
-        aaudio_forwarder
-        SHARED
-        main.cpp
-        network_sender.cpp)
+# Optimization flags
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -O3 -ffast-math -flto")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
 
-find_library(
-        log-lib
-        log)
+# Strip symbols for release
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections,--strip-all")
+
+add_library(
+    aaudio_forwarder
+    SHARED
+    jni_bridge.cpp
+    network_client.cpp
+)
 
 target_link_libraries(
-        aaudio_forwarder
-        ${log-lib}
-        android)
+    aaudio_forwarder
+    log
+    android
+)
 
-target_link_options(aaudio_forwarder PRIVATE
-    "-flto"
-    "-Wl,--gc-sections"
-    "-Wl,--icf=all"
-    "-Wl,-O3"
+# LTO optimization
+set_target_properties(aaudio_forwarder PROPERTIES
+    INTERPROCEDURAL_OPTIMIZATION TRUE
 )
