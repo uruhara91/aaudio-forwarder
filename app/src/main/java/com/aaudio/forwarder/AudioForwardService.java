@@ -23,22 +23,23 @@ public class AudioForwardService extends Service {
     private static final int SAMPLE_RATE = 48000;
     private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_STEREO;
     private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
-    
-    // Buffer Size: 4096 bytes (Low latency chunk)
-    // Jangan terlalu kecil biar gak kebanyakan syscall, jangan terlalu besar biar gak lag.
-    private static final int BUFFER_SIZE = 4096; 
+    private static final int BUFFER_SIZE = 2048; 
 
     private MediaProjection mediaProjection;
     private AudioRecord audioRecord;
     private Thread captureThread;
     private volatile boolean isRunning = false;
 
+    // Simpan parameter start sementara
+    private int pendingResultCode;
+    private Intent pendingData;
+    private int pendingPort;
+
     static {
         System.loadLibrary("aaudio_forwarder");
     }
 
     public native boolean initServer(int port);
-    // Kita kirim ByteBuffer langsung, bukan byte array!
     public native boolean sendPcmDataDirect(ByteBuffer buffer, int size); 
     public native void closeServer();
 
@@ -52,7 +53,7 @@ public class AudioForwardService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Notification notification = new Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("Audio Forwarder")
-                .setContentText("Streaming (Dark Mode)...")
+                .setContentText("Waiting for PC connection...")
                 .setSmallIcon(android.R.drawable.ic_media_play)
                 .build();
 
@@ -63,10 +64,15 @@ public class AudioForwardService extends Service {
         }
 
         if (intent != null && "START".equals(intent.getAction())) {
-            int resultCode = intent.getIntExtra("RESULT_CODE", 0);
-            Intent data = intent.getParcelableExtra("DATA");
-            int port = intent.getIntExtra("PORT", 28200);
-            if (resultCode != 0 && data != null) startCapture(resultCode, data, port);
+            pendingResultCode = intent.getIntExtra("RESULT_CODE", 0);
+            pendingData = intent.getParcelableExtra("DATA");
+            pendingPort = intent.getIntExtra("PORT", 28200);
+
+            if (pendingResultCode != 0 && pendingData != null) {
+                // JANGAN BLOCKING DI SINI!
+                // Langsung start thread aja.
+                startCaptureThread(); 
+            }
         } else if (intent != null && "STOP".equals(intent.getAction())) {
             stopCapture();
             stopSelf();
@@ -74,9 +80,21 @@ public class AudioForwardService extends Service {
         return START_NOT_STICKY;
     }
 
-    private void startCapture(int resultCode, Intent data, int port) {
+    private void startCaptureThread() {
+        isRunning = true;
+        captureThread = new Thread(this::captureLoop);
+        captureThread.setPriority(Thread.MAX_PRIORITY);
+        captureThread.start();
+    }
+
+    private void captureLoop() {
+        // 1. SETUP MEDIA PROJECTION (Harus di thread yang punya Looper kalau bisa, tapi coba di sini dulu aman biasanya)
+        // Kalau error "Can't create handler inside thread that has not called Looper.prepare()",
+        // kita pindah setup ini ke Main Thread lagi, tapi initServer TETAP di sini.
+        
+        // --- SETUP AUDIO RECORD ---
         MediaProjectionManager mpm = getSystemService(MediaProjectionManager.class);
-        mediaProjection = mpm.getMediaProjection(resultCode, data);
+        mediaProjection = mpm.getMediaProjection(pendingResultCode, pendingData);
 
         AudioPlaybackCaptureConfiguration config = new AudioPlaybackCaptureConfiguration.Builder(mediaProjection)
                 .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
@@ -95,35 +113,27 @@ public class AudioForwardService extends Service {
                 .setAudioPlaybackCaptureConfig(config)
                 .build();
 
-        if (!initServer(port)) {
+        // --- BLOCKING WAIT (INIT SERVER) ---
+        // Ini yang bikin macet tadi. Sekarang aman karena di background thread.
+        // Dia bakal diem di sini sampe QtScrcpy connect.
+        if (!initServer(pendingPort)) {
+            // Kalau gagal bind port atau error lain
+            stopCapture();
             stopSelf();
             return;
         }
 
-        isRunning = true;
-        captureThread = new Thread(this::captureLoop);
-        captureThread.setPriority(Thread.MAX_PRIORITY); // Java Thread Priority max
-        captureThread.start();
-    }
-
-    private void captureLoop() {
+        // --- START RECORDING ---
         audioRecord.startRecording();
-        
-        // ZERO COPY MAGIC: Allocate Direct Buffer
-        // Memori ini ada di native heap, bukan Java heap.
         ByteBuffer directBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
 
         while (isRunning) {
-            // AudioRecord nulis langsung ke native memory address
             int read = audioRecord.read(directBuffer, BUFFER_SIZE);
-            
             if (read > 0) {
-                // Kirim ByteBuffer object ke JNI (C++ tinggal ambil pointer address-nya)
-                // Tidak ada array copy di sini.
                 if (!sendPcmDataDirect(directBuffer, read)) {
-                    break;
+                    break; 
                 }
-                directBuffer.clear(); // Reset posisi pointer buffer
+                directBuffer.clear();
             }
         }
         stopCapture();
