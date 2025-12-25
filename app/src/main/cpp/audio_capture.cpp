@@ -1,112 +1,111 @@
-#include "network_sender.h"
-#include <unistd.h>
+#include "audio_capture.h"
 #include <android/log.h>
-#include <netinet/tcp.h> 
-#include <chrono>
 #include <cstring>
-#include <cerrno>
 
-#define LOG_TAG "NetworkSender"
+#define LOG_TAG "AAudioCapture"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-NetworkSender::NetworkSender() {}
+// Constructor
+AAudioCapture::AAudioCapture() {}
 
-NetworkSender::~NetworkSender() {
-    disconnect();
+// Destructor
+AAudioCapture::~AAudioCapture() {
+    stop();
+    if (stream) {
+        AAudioStream_close(stream);
+        stream = nullptr;
+    }
 }
 
-bool NetworkSender::connect(const char* ipAddress, int port) {
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) return false;
+// Callbacks
+aaudio_data_callback_result_t AAudioCapture::dataCallback(
+    AAudioStream* stream,
+    void* userData,
+    void* audioData,
+    int32_t numFrames) {
     
-    int optval = 1;
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-    int sendbuf = 256 * 1024;
-    setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &sendbuf, sizeof(sendbuf));
+    auto* capture = static_cast<AAudioCapture*>(userData);
+    auto* data = static_cast<int16_t*>(audioData);
     
-    memset(&serverAddr, 0, sizeof(serverAddr));
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(port);
+    // Stereo = numFrames * 2
+    std::vector<int16_t> buffer(data, data + numFrames * 2); 
     
-    if (inet_pton(AF_INET, ipAddress, &serverAddr.sin_addr) <= 0) {
-        close(sockfd);
-        sockfd = -1;
+    {
+        std::lock_guard<std::mutex> lock(capture->queueMutex);
+        if (capture->audioQueue.size() < 10) { 
+            capture->audioQueue.push(std::move(buffer));
+        }
+    }
+    
+    return AAUDIO_CALLBACK_RESULT_CONTINUE;
+}
+
+void AAudioCapture::errorCallback(
+    AAudioStream* stream,
+    void* userData,
+    aaudio_result_t error) {
+    LOGE("AAudio error: %s", AAudio_convertResultToText(error));
+}
+
+// Initialization
+bool AAudioCapture::initialize(int sampleRate, int channelCount) {
+    AAudioStreamBuilder* builder = nullptr;
+    
+    aaudio_result_t result = AAudio_createStreamBuilder(&builder);
+    if (result != AAUDIO_OK) {
+        LOGE("Failed to create stream builder: %s", AAudio_convertResultToText(result));
         return false;
     }
     
-    isConnected = true;
-    return true;
-}
-
-bool NetworkSender::sendAudioPacket(const std::vector<int16_t>& audioData) {
-    if (!isConnected || sockfd < 0) return false;
+    AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_INPUT);
+    AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_EXCLUSIVE);
+    AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
+    AAudioStreamBuilder_setSampleRate(builder, sampleRate);
+    AAudioStreamBuilder_setChannelCount(builder, channelCount);
+    AAudioStreamBuilder_setFormat(builder, AAUDIO_FORMAT_PCM_I16);
     
-    uint32_t dataSize = audioData.size() * sizeof(int16_t);
-    uint32_t timestamp = static_cast<uint32_t>(
-        std::chrono::steady_clock::now().time_since_epoch().count()
-    );
+    // Set callbacks
+    AAudioStreamBuilder_setDataCallback(builder, dataCallback, this);
+    AAudioStreamBuilder_setErrorCallback(builder, errorCallback, this);
     
-    std::vector<uint8_t> packet(8 + dataSize);
-    memcpy(packet.data(), &dataSize, 4);
-    memcpy(packet.data() + 4, &timestamp, 4);
-    memcpy(packet.data() + 8, audioData.data(), dataSize);
+    // Buffer optimization
+    AAudioStreamBuilder_setFramesPerDataCallback(builder, 192);
     
-    ssize_t sent = sendto(sockfd, packet.data(), packet.size(), 0,
-                         (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+    result = AAudioStreamBuilder_openStream(builder, &stream);
+    AAudioStreamBuilder_delete(builder);
     
-    if (sent < 0) {
-        errors++;
+    if (result != AAUDIO_OK) {
+        LOGE("Failed to open stream: %s", AAudio_convertResultToText(result));
         return false;
     }
     
-    bytesSent += sent;
-    packetsSent++;
     return true;
 }
 
-bool NetworkSender::connectTCP(const char* ipAddress, int port) {
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) return false;
-    
-    int flag = 1;
-    setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
-    
-    memset(&serverAddr, 0, sizeof(serverAddr));
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(port);
-    inet_pton(AF_INET, ipAddress, &serverAddr.sin_addr);
-    
-    if (::connect(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-        close(sockfd);
-        sockfd = -1;
-        return false;
+// Start
+bool AAudioCapture::start() {
+    if (!stream) return false;
+    aaudio_result_t result = AAudioStream_requestStart(stream);
+    if (result != AAUDIO_OK) return false;
+    isRunning = true;
+    return true;
+}
+
+// Stop
+void AAudioCapture::stop() {
+    if (stream && isRunning) {
+        AAudioStream_requestStop(stream);
+        isRunning = false;
     }
+}
+
+// Get Audio Data
+bool AAudioCapture::getAudioData(std::vector<int16_t>& outData) {
+    std::lock_guard<std::mutex> lock(queueMutex);
+    if (audioQueue.empty()) return false;
     
-    isConnected = true;
+    outData = std::move(audioQueue.front());
+    audioQueue.pop();
     return true;
-}
-
-bool NetworkSender::sendTCP(const std::vector<int16_t>& audioData) {
-    if (!isConnected || sockfd < 0) return false;
-    uint32_t dataSize = audioData.size() * sizeof(int16_t);
-    
-    if (send(sockfd, &dataSize, sizeof(dataSize), 0) < 0) return false;
-    if (send(sockfd, audioData.data(), dataSize, 0) < 0) return false;
-    
-    bytesSent += sizeof(dataSize) + dataSize;
-    packetsSent++;
-    return true;
-}
-
-void NetworkSender::disconnect() {
-    if (sockfd >= 0) {
-        close(sockfd);
-        sockfd = -1;
-    }
-    isConnected = false;
-}
-
-bool NetworkSender::isActive() const {
-    return isConnected.load();
 }
