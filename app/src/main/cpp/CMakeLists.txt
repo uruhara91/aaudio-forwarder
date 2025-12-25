@@ -9,14 +9,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ffast-math -flto")
 find_library(AAUDIO_LIB aaudio)
 find_library(LOG_LIB log)
 
-# Perhatikan: Tidak perlu pakai 'src/main/cpp/' lagi karena file ini sudah di situ
 add_library(aaudio_forwarder SHARED
     audio_capture.cpp
     network_sender.cpp
     main.cpp
 )
 
-# Include header dari folder saat ini (.)
 target_include_directories(aaudio_forwarder PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
