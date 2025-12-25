@@ -24,13 +24,13 @@ jobs:
     - name: Setup Android SDK & NDK
       uses: android-actions/setup-android@v3
       with:
-        # Tambah cmdline-tools;latest untuk fix error XML version 4
         packages: 'ndk;25.2.9519653 cmake;3.22.1 cmdline-tools;latest'
     
     - name: Decode Keystore
       env:
         ENCODED_STRING: ${{ secrets.KEYSTORE_BASE64 }}
       run: |
+        # Membersihkan string dari enter/spasi sebelum decode
         echo "$ENCODED_STRING" | tr -d '\r\n' | base64 --decode > app/release-key.jks
 
     - name: Setup Gradle
@@ -39,9 +39,12 @@ jobs:
         gradle-version: 8.2
 
     - name: Build Release APK
-      # Kita definisikan ANDROID_NDK_HOME secara eksplisit di sini
       env:
         ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/25.2.9519653
+        # --- FIX: Inject Secrets ke Environment Gradle ---
+        STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       run: gradle assembleRelease -Pandroid.injected.cmake.version=3.22.1 --no-daemon --stacktrace
 
     - name: Find and Rename APK
