@@ -27,21 +27,29 @@ jobs:
         ndk-version: r26b
         add-to-path: true
     
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+      with:
+        gradle-version: 8.2
+    
     - name: Cache Gradle packages
-      uses: actions/cache@v4
+      uses: actions/cache@v3
       with:
         path: |
           ~/.gradle/caches
           ~/.gradle/wrapper
         key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
     
-    - name: Build APK
-      run: |
-        chmod +x gradlew
-        ./gradlew assembleRelease
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    - name: Build APK with Gradle
+      run: gradle assembleRelease
+      env:
+        ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
     
     - name: Upload APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: aaudio-forwarder-apk
         path: app/build/outputs/apk/release/*.apk
@@ -50,11 +58,13 @@ jobs:
       run: |
         mkdir -p build
         cd build
-        cmake .. -DANDROID_ABI=arm64-v8a -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake
+        cmake ../app/src/main -DANDROID_ABI=arm64-v8a \
+          -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+          -DCMAKE_BUILD_TYPE=Release
         make -j4
     
     - name: Upload native libs
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: native-libs
-        path: build/lib*.so
+        path: build/*.so
