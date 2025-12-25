@@ -3,8 +3,6 @@ name: Build AAudio Forwarder
 on:
   push:
     branches: [ main, dev ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -35,8 +33,13 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
-    - name: Build APK Release (Max Performance)
+    - name: Build APK Release
       run: ./gradlew assembleRelease
+    
+    - name: List Output Files (Debug)
+      run: |
+        echo "Listing build outputs..."
+        ls -R app/build/outputs/ || echo "Output directory not found!"
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
