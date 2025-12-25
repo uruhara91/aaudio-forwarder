@@ -10,21 +10,28 @@
 
 class NetworkSender {
 private:
-    int sockfd = -1;
-    struct sockaddr_in serverAddr;
-    std::atomic<bool> isConnected{false};
+    int serverSocket = -1;  // Socket buat nunggu tamu
+    int clientSocket = -1;  // Socket buat ngobrol sama PC
+    struct sockaddr_in address;
     
+    std::atomic<bool> isConnected{false};
     std::atomic<uint64_t> bytesSent{0};
 
 public:
     NetworkSender();
     ~NetworkSender();
 
-    // Kita ubah implementasinya jadi TCP di file .cpp
-    bool connect(const char* ipAddress, int port);
+    // Setup Server di Port tertentu
+    bool startServer(int port);
+    
+    // Tunggu PC connect (Blocking) - Dipanggil di thread terpisah
+    bool waitForConnection();
+    
     bool sendAudioPacket(const std::vector<int16_t>& audioData);
     
-    void disconnect();
+    void closeClient(); // Putus koneksi PC (tapi server tetep jalan)
+    void stop();        // Matikan total
+    
     bool isActive() const;
 };
 

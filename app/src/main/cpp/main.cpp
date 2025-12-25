@@ -8,7 +8,6 @@
 
 #define LOG_TAG "AAudioForwarder"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 static std::unique_ptr<AAudioCapture> audioCapture;
 static std::unique_ptr<NetworkSender> networkSender;
@@ -16,18 +15,37 @@ static std::atomic<bool> isRunning{false};
 static std::thread processingThread;
 
 void audioProcessingLoop() {
-    LOGI("Audio processing loop started (Event Driven)");
+    LOGI("Processing Thread Started.");
+    
+    // 1. TUNGGU PC CONNECT DULU (Blocking)
+    // Audio tidak akan direkam sebelum PC nyolok dan connect.
+    if (!networkSender->waitForConnection()) {
+        LOGI("Wait for connection failed/cancelled.");
+        return;
+    }
+    
+    // 2. Start Microphone (AAudio)
+    // Baru nyalain mic pas udah connect, biar buffer gak numpuk
+    if (!audioCapture->start()) {
+        LOGI("Failed to start AAudio");
+        return;
+    }
     
     std::vector<int16_t> audioBuffer;
     audioBuffer.reserve(4096);
     
+    LOGI("Starting Stream Loop...");
+    
     while (isRunning) {
+        // Kalau PC putus, loop ini akan tetap jalan tapi sendAudioPacket return false
+        // Kita bisa tambahkan logic reconnect kalau mau, tapi simpelnya gini dulu.
         if (audioCapture->waitForAudioData(audioBuffer)) {
-            if (!networkSender->sendAudioPacket(audioBuffer)) {
-            }
+             networkSender->sendAudioPacket(audioBuffer);
         }
     }
-    LOGI("Audio processing loop stopped");
+    
+    audioCapture->stop();
+    LOGI("Audio loop stopped");
 }
 
 extern "C" {
@@ -38,26 +56,19 @@ Java_com_aaudio_forwarder_AudioForwardService_startForwarding(
     
     if (isRunning) return JNI_FALSE;
     
-    const char* ipAddress = env->GetStringUTFChars(jIpAddress, nullptr);
-    LOGI("Starting forwarding -> %s:%d", ipAddress, port);
+    // IP Address kita abaikan karena kita jadi Server (Listen ANY)
+    LOGI("Starting Server on Port %d", port);
     
     audioCapture = std::make_unique<AAudioCapture>();
     networkSender = std::make_unique<NetworkSender>();
     
-    if (!audioCapture->initialize(sampleRate, 2)) {
-        env->ReleaseStringUTFChars(jIpAddress, ipAddress);
-        return JNI_FALSE;
-    }
+    // 1. Init Mic (Belum Start)
+    if (!audioCapture->initialize(sampleRate, 2)) return JNI_FALSE;
     
-    if (!networkSender->connect(ipAddress, port)) {
-        env->ReleaseStringUTFChars(jIpAddress, ipAddress);
-        return JNI_FALSE;
-    }
+    // 2. Buka Port Server (Bind & Listen)
+    if (!networkSender->startServer(port)) return JNI_FALSE;
     
-    env->ReleaseStringUTFChars(jIpAddress, ipAddress);
-    
-    if (!audioCapture->start()) return JNI_FALSE;
-    
+    // 3. Start Thread (Nanti thread yang akan accept connection)
     isRunning = true;
     processingThread = std::thread(audioProcessingLoop);
     
@@ -70,11 +81,11 @@ Java_com_aaudio_forwarder_AudioForwardService_stopForwarding(JNIEnv* env, jobjec
     
     isRunning = false;
     
-    if (audioCapture) audioCapture->stop();
+    // Force stop socket biar thread yang lagi blocking di accept() atau send() bangun
+    if (networkSender) networkSender->stop();
+    if (audioCapture) audioCapture->stop(); // Stop mic
     
     if (processingThread.joinable()) processingThread.join();
-    
-    if (networkSender) networkSender->disconnect();
     
     audioCapture.reset();
     networkSender.reset();
@@ -82,8 +93,7 @@ Java_com_aaudio_forwarder_AudioForwardService_stopForwarding(JNIEnv* env, jobjec
 
 JNIEXPORT jstring JNICALL
 Java_com_aaudio_forwarder_AudioForwardService_getStatus(JNIEnv* env, jobject) {
-    if (isRunning) return env->NewStringUTF("Running");
-    return env->NewStringUTF("Stopped");
+    return env->NewStringUTF(isRunning ? "Running (Server Mode)" : "Stopped");
 }
 
 }
