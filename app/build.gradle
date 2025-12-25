@@ -16,8 +16,9 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags "-std=c++17", "-O3", "-ffast-math", "-flto"
-                arguments "-DANDROID_STL=c++_shared"
+                cppFlags "-std=c++17", "-O3", "-flto", "-ffast-math", "-fno-stack-protector", "-fomit-frame-pointer", "-fno-plt", "-fno-exceptions", "-fno-rtti"
+                arguments "-DCMAKE_BUILD_TYPE=Release", 
+                          "-DANDROID_STL=c++_static"
                 abiFilters 'arm64-v8a'
             }
         }
@@ -38,10 +39,11 @@ android {
 
     buildTypes {
         release {
+            minifyEnabled true
+            shrinkResources true
+            zipAlignEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
         }
     }
 
