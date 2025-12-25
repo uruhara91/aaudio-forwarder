@@ -22,7 +22,7 @@ class AudioForwardService : Service() {
         private const val TAG = "AAudioFwd"
         private const val CHANNEL_ID = "AAudioChannel"
         private const val SAMPLE_RATE = 48000
-        private const val BUFFER_SIZE = 4096 // Optimized: 2048 terlalu kecil!
+        private const val BUFFER_SIZE = 4096
     }
 
     private var mediaProjection: MediaProjection? = null

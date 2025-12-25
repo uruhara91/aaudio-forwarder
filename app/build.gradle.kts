@@ -12,7 +12,7 @@ android {
         minSdk = 29
         targetSdk = 34
         versionCode = 2
-        versionName = "2.0-optimized"
+        versionName = "2.0"
 
         ndk {
             abiFilters.add("arm64-v8a")
@@ -70,10 +70,6 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
-    }
-
-    buildFeatures {
-        buildConfig = true
     }
 }
 
