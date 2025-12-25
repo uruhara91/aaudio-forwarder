@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.widget.TextView; // Tambah ini
 
 public class MainActivity extends Activity {
 
@@ -12,24 +13,30 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // Kasih tampilan dikit biar gak dikira virus
+        TextView tv = new TextView(this);
+        tv.setText("AAudio Forwarder Ready.\nWaiting for permission...");
+        setContentView(tv);
 
-        // Cek izin Microphone
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            // Kalau belum punya izin, MINTA DULU
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
         } else {
-            // Kalau sudah punya, langsung tutup (tugas selesai)
-            finish();
+            // Jangan langsung finish, kasih user liat kalau ini udah ready
+            tv.setText("Permission GRANTED.\nService is ready to start via USB.");
         }
     }
 
-    // Callback saat user klik Allow/Deny
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == PERMISSION_REQUEST_CODE) {
-            // Apapun hasilnya, kita tutup activity-nya.
-            // Kalau user 'Deny', service nanti bakal gagal start, tapi app gak crash.
-            finish();
+             TextView tv = new TextView(this);
+             setContentView(tv);
+             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                 tv.setText("Permission GRANTED.\nYou can minimize this app now.");
+             } else {
+                 tv.setText("Permission DENIED.\nApp cannot work without Microphone access.");
+             }
         }
     }
 }
