@@ -63,7 +63,6 @@ bool NetworkSender::sendAudioPacket(const std::vector<int16_t>& audioData) {
     
     memcpy(packetBuffer.data(), &dataSize, 4);
     memcpy(packetBuffer.data() + 4, &timestamp, 4);
-    
     memcpy(packetBuffer.data() + 8, audioData.data(), dataSize);
     
     ssize_t sent = sendto(sockfd, packetBuffer.data(), totalSize, 0,

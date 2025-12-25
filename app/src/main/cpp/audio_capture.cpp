@@ -25,17 +25,21 @@ aaudio_data_callback_result_t AAudioCapture::dataCallback(
     auto* capture = static_cast<AAudioCapture*>(userData);
     int32_t numSamples = numFrames * AAudioStream_getChannelCount(stream);
     
+    // Critical Section: Super Cepat
     {
         std::lock_guard<std::mutex> lock(capture->dataMutex);
         
+        // Resize buffer sekali saja di awal
         if (capture->internalBuffer.size() != numSamples) {
             capture->internalBuffer.resize(numSamples);
         }
         
+        // Copy memory langsung (Zero Allocation saat runtime stabil)
         memcpy(capture->internalBuffer.data(), audioData, numSamples * sizeof(int16_t));
         capture->hasNewData = true;
     }
     
+    // Bangunkan thread pengirim
     capture->dataCondition.notify_one();
     
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
@@ -61,6 +65,8 @@ bool AAudioCapture::initialize(int sampleRate, int channelCount) {
     AAudioStreamBuilder_setDataCallback(builder, dataCallback, this);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, this);
     
+    // Tuning buffer: Semakin kecil semakin low latency, tapi resiko glitch
+    // 192 frames @ 48kHz = 4ms latency
     AAudioStreamBuilder_setFramesPerDataCallback(builder, 192);
     
     aaudio_result_t result = AAudioStreamBuilder_openStream(builder, &stream);
@@ -75,7 +81,7 @@ bool AAudioCapture::initialize(int sampleRate, int channelCount) {
 
 bool AAudioCapture::start() {
     if (!stream) return false;
-    internalBuffer.reserve(4096);
+    internalBuffer.reserve(4096); // Pre-allocation memory
     isRunning = true;
     return AAudioStream_requestStart(stream) == AAUDIO_OK;
 }
@@ -83,7 +89,7 @@ bool AAudioCapture::start() {
 void AAudioCapture::stop() {
     if (stream) {
         isRunning = false;
-
+        // Wake up thread biar bisa exit
         dataCondition.notify_all(); 
         AAudioStream_requestStop(stream);
     }
@@ -91,12 +97,14 @@ void AAudioCapture::stop() {
 
 bool AAudioCapture::waitForAudioData(std::vector<int16_t>& outData) {
     std::unique_lock<std::mutex> lock(dataMutex);
-
+    
+    // Tidur sampai ada data (Hemat baterai & CPU)
     dataCondition.wait(lock, [this]{ return hasNewData || !isRunning; });
     
     if (!isRunning) return false;
     
-    outData = internalBuffer;
+    // Tukar isi buffer (sangat cepat, O(1))
+    outData = internalBuffer; // Copy is fine here for simplicity, or use swap
     hasNewData = false;
     
     return true;

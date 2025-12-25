@@ -12,12 +12,13 @@ private:
     AAudioStream* stream = nullptr;
     std::atomic<bool> isRunning{false};
     
-    std::vector<int16_t> audioBuffer;
+    // Optimasi: Buffer tunggal & Sinyal thread
+    std::vector<int16_t> internalBuffer;
     bool hasNewData = false;
     
-    std::mutex queueMutex;
+    std::mutex dataMutex;
     std::condition_variable dataCondition;
-
+    
     static aaudio_data_callback_result_t dataCallback(
         AAudioStream* stream,
         void* userData,
@@ -36,8 +37,9 @@ public:
     bool initialize(int sampleRate, int channelCount);
     bool start();
     void stop();
-
-    bool waitForAudioData(std::vector<int16_t>& outData); 
+    
+    // Fungsi baru: Blocking wait (Hemat CPU)
+    bool waitForAudioData(std::vector<int16_t>& outData);
 };
 
-#endif
+#endif // AUDIO_CAPTURE_H

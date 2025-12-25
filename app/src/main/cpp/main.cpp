@@ -17,15 +17,13 @@ static std::thread processingThread;
 
 void audioProcessingLoop() {
     LOGI("Audio processing loop started (Event Driven)");
-
+    
     std::vector<int16_t> audioBuffer;
     audioBuffer.reserve(4096);
     
     while (isRunning) {
         if (audioCapture->waitForAudioData(audioBuffer)) {
-
             if (!networkSender->sendAudioPacket(audioBuffer)) {
-
             }
         }
     }

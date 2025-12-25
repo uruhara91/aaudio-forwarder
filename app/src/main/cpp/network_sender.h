@@ -16,7 +16,6 @@ private:
     
     std::vector<uint8_t> packetBuffer;
     
-    // Stats
     std::atomic<uint64_t> bytesSent{0};
     std::atomic<uint32_t> packetsSent{0};
     std::atomic<uint32_t> errors{0};
@@ -35,4 +34,4 @@ public:
     bool isActive() const;
 };
 
-#endif // NETWORK_SENDER_H
+#endif
