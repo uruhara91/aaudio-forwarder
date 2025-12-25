@@ -24,8 +24,15 @@ jobs:
     - name: Setup Android SDK & NDK
       uses: android-actions/setup-android@v3
       with:
-        # Kita install CMake 3.22.1 (lebih baru & optimal untuk flag O3 kamu)
         packages: 'ndk;25.2.9519653 cmake;3.22.1'
+    
+    - name: Decode Keystore
+      env:
+        # Pastikan nama secret di GitHub Settings kamu adalah KEYSTORE_BASE64
+        ENCODED_STRING: ${{ secrets.KEYSTORE_BASE64 }}
+      run: |
+        # Decode base64 text ke file fisik bernama release-key.jks di folder app/
+        echo $ENCODED_STRING | base64 -d > app/release-key.jks
 
     - name: Setup Gradle
       uses: gradle/gradle-build-action@v2
@@ -33,7 +40,6 @@ jobs:
         gradle-version: 8.2
 
     - name: Build Release APK
-      # FIX: Memaksa Gradle menggunakan CMake 3.22.1 agar tidak mencari 3.18.1
       run: gradle assembleRelease -Pandroid.injected.cmake.version=3.22.1 --no-daemon --stacktrace
       env:
         ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/25.2.9519653
