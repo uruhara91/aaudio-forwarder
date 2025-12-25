@@ -27,17 +27,24 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            storeFile file("release-key.jks")
+            storePassword System.getenv("STORE_PASSWORD")
+            keyAlias System.getenv("KEY_ALIAS")
+            keyPassword System.getenv("KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
-            minifyEnabled false 
+            signingConfig signingConfigs.release
+            minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
         }
-        debug {
-            debuggable true
-        }
     }
+}
 
     externalNativeBuild {
         cmake {
