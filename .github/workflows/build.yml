@@ -50,9 +50,18 @@ jobs:
     - name: Find and Rename APK
       run: |
         APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+        TARGET_PATH="app/build/outputs/apk/release/app-release.apk"
+
         if [ -n "$APK_PATH" ]; then
-          mv "$APK_PATH" app/build/outputs/apk/release/app-release.apk
-          echo "✅ APK Size: $(du -h app/build/outputs/apk/release/app-release.apk | cut -f1)"
+          # Cek: Kalau path asal BEDA dengan target, baru rename. Kalau sama, skip.
+          if [ "$APK_PATH" != "$TARGET_PATH" ]; then
+             mv "$APK_PATH" "$TARGET_PATH"
+             echo "🔄 Renamed $APK_PATH to app-release.apk"
+          else
+             echo "✅ APK already named correctly."
+          fi
+          
+          echo "✅ APK Size: $(du -h "$TARGET_PATH" | cut -f1)"
         else
           echo "❌ APK not found!"
           ls -R app/build/outputs/ || echo "Build output directory not found"
