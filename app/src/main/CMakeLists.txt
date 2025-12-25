@@ -12,35 +12,22 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -ffast-math -flto")
 find_library(AAUDIO_LIB aaudio)
 find_library(LOG_LIB log)
 
-# Source files
+# Source files (relative to app/src/main/)
 set(SOURCES
-    src/audio_capture.cpp
-    src/audio_encoder.cpp
-    src/network_sender.cpp
-    src/main.cpp
+    cpp/audio_capture.cpp
+    cpp/audio_encoder.cpp
+    cpp/network_sender.cpp
+    cpp/main.cpp
 )
 
 # Build native library
 add_library(aaudio_forwarder SHARED ${SOURCES})
 
 target_include_directories(aaudio_forwarder PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpp
 )
 
 target_link_libraries(aaudio_forwarder
-    ${AAUDIO_LIB}
-    ${LOG_LIB}
-    android
-)
-
-# Build executable untuk testing
-add_executable(aaudio_forwarder_bin ${SOURCES})
-
-target_include_directories(aaudio_forwarder_bin PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-)
-
-target_link_libraries(aaudio_forwarder_bin
     ${AAUDIO_LIB}
     ${LOG_LIB}
     android
