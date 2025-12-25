@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId "com.aaudio.forwarder"
-        minSdk 29  // Android 10+ (AudioPlaybackCapture requirement)
+        minSdk 29
         targetSdk 34
         versionCode 2
         versionName "2.0-optimized"
@@ -18,20 +18,29 @@ android {
             abiFilters 'arm64-v8a'
         }
 
-        signingConfigs {
-            release {
-                storeFile file("release-key.jks")
-                storePassword System.getenv("STORE_PASSWORD")
-                keyAlias System.getenv("KEY_ALIAS")
-                keyPassword System.getenv("KEY_PASSWORD")
+        externalNativeBuild {
+            cmake {
+                // FIX: Menghapus 'cppFlags' yang bikin error. 
+                // Flag optimasi sudah otomatis ter-load dari CMakeLists.txt kamu.
+                arguments '-DANDROID_STL=c++_shared'
             }
         }
     }
 
-    externalNativeBuild {
-        cmake {
-            cppFlags '-std=c++17 -O3 -ffast-math -flto'
-            arguments '-DANDROID_STL=c++_shared'
+    // BLOCK SIGNING DIKEMBALIKAN (Sesuai request)
+    signingConfigs {
+        release {
+            // Pastikan file 'release-key.jks' ada di folder app/ atau digenerate oleh workflow
+            // Jika file tidak ketemu, build akan error di tahap signing
+            if (file("release-key.jks").exists()) {
+                storeFile file("release-key.jks")
+                storePassword System.getenv("STORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            } else {
+                // Fallback aman: Jika JKS belum ke-decode, print warning tapi jangan crash dulu
+                println "⚠️ Warning: release-key.jks not found. Signing might fail if not injected."
+            }
         }
     }
 
@@ -41,8 +50,8 @@ android {
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             
-            // FIX ANTI MERAH: Gunakan debug key sementara agar build sukses 100%
-            signingConfig signingConfigs.debug 
+            // Menggunakan config release yang mengambil data dari Secrets repo kamu
+            signingConfig signingConfigs.release
             
             ndk {
                 debugSymbolLevel 'NONE'
@@ -53,7 +62,7 @@ android {
     externalNativeBuild {
         cmake {
             path file('src/main/cpp/CMakeLists.txt')
-            // FIX: Disamakan dengan versi yang ada di GitHub Actions (build.yml)
+            // PENTING: Versi disamakan dengan GitHub Actions (3.22.1) biar ga konflik
             version '3.22.1'
         }
     }
