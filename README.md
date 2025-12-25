@@ -4,10 +4,9 @@
 
 - ✅ **Zero-Copy Audio Transfer** - Direct buffer, tanpa memcpy
 - ✅ **CLIENT MODE** - Android connect ke PC (compatible dengan QtScrcpy)
-- ✅ **Buffer Optimized** - 8KB buffer untuk audio smooth tanpa crackling
+- ✅ **Buffer Optimized** - buffer untuk audio smooth tanpa crackling
 - ✅ **Dark UI** - Minimal battery drain, auto-minimize
 - ✅ **Kotlin Native** - Lebih clean & maintainable dari Java
-- ✅ **LTO & O3 Optimization** - Native code dikompile untuk performa maksimal
 
 ## 🔧 Build Requirements
 
@@ -186,9 +185,8 @@ PC QtScrcpy (QAudioSink)
 1. **DirectByteBuffer**: No JNI array copy overhead
 2. **TCP_NODELAY**: Disable Nagle algorithm untuk low-latency
 3. **SO_SNDBUF 256KB**: Large send buffer untuk smooth streaming
-4. **LTO & O3**: Link-time optimization & aggressive compiler optimization
 5. **Thread.MAX_PRIORITY**: Audio capture thread gets highest CPU priority
-6. **Buffer 8KB**: Sweet spot untuk 48kHz stereo (43ms latency)
+6. **Buffer 4KB**: Sweet spot untuk 48kHz stereo (43ms latency)
    
 ## 🛠️ Development
 
