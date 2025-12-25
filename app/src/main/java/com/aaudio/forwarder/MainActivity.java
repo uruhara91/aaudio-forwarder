@@ -1,23 +1,35 @@
 package com.aaudio.forwarder;
 
+import android.Manifest;
 import android.app.Activity;
-import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 
 public class MainActivity extends Activity {
+
+    private static final int PERMISSION_REQUEST_CODE = 100;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Kita gak butuh UI, ini cuma dummy biar APK valid.
-        // Nanti QtScrcpy akan panggil service langsung via 'am start-service'
-        
-        // Contoh cara test manual (hardcoded):
-        // Intent intent = new Intent(this, AudioForwardService.class);
-        // intent.setAction("START");
-        // intent.putExtra("IP", "192.168.1.5");
-        // intent.putExtra("PORT", 28200);
-        // startService(intent);
-        
-        finish(); // Langsung tutup UI-nya
+
+        // Cek izin Microphone
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            // Kalau belum punya izin, MINTA DULU
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
+        } else {
+            // Kalau sudah punya, langsung tutup (tugas selesai)
+            finish();
+        }
+    }
+
+    // Callback saat user klik Allow/Deny
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            // Apapun hasilnya, kita tutup activity-nya.
+            // Kalau user 'Deny', service nanti bakal gagal start, tapi app gak crash.
+            finish();
+        }
     }
 }
