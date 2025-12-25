@@ -1,6 +1,4 @@
-# AAudio Forwarder - Ultra Optimized Audio Forwarding
-
-**Pengganti sndcpy yang dioptimasi untuk gaming & low-latency audio streaming.**
+# AAudio Forwarder
 
 ## ✨ Fitur Utama
 
@@ -16,7 +14,7 @@
 - Android API 29+ (Android 10+)
 - NDK r25c atau lebih baru
 - Kotlin 1.9+
-- CMake 3.18.1+
+- CMake 3.22.0+
 
 ## 📦 Instalasi
 
@@ -191,17 +189,7 @@ PC QtScrcpy (QAudioSink)
 4. **LTO & O3**: Link-time optimization & aggressive compiler optimization
 5. **Thread.MAX_PRIORITY**: Audio capture thread gets highest CPU priority
 6. **Buffer 8KB**: Sweet spot untuk 48kHz stereo (43ms latency)
-
-## 📊 Performance Metrics
-
-| Metric | sndcpy original | AAudio Forwarder |
-|--------|----------------|------------------|
-| Latency | ~200ms | **~50ms** |
-| CPU Usage (Android) | ~15% | **~8%** |
-| Battery Drain | High | **Low** |
-| Memory | ~30MB | **~12MB** |
-| APK Size | ~8MB | **~500KB** |
-
+   
 ## 🛠️ Development
 
 ### Project Structure
@@ -243,7 +231,6 @@ MIT License - Feel free to use & modify!
 
 - Original [sndcpy](https://github.com/rom1v/sndcpy) by rom1v
 - [QtScrcpy](https://github.com/barry-ran/QtScrcpy) integration
-- Optimized for FPS gaming by [@yourusername]
 
 ## 🐞 Bug Reports
 
