@@ -1,9 +1,9 @@
-# --- 1. JNI SAFETY (WAJIB) ---
+# --- 1. JNI SAFETY ---
 -keepclasseswithmembernames class * {
     native <methods>;
 }
 
-# --- 2. ADB ENTRY POINTS (WAJIB) ---
+# --- 2. ADB ENTRY POINTS ---
 -keep class com.aaudio.forwarder.AudioForwardService {
     <init>(...);
 }

@@ -22,8 +22,6 @@ class AudioForwardService : Service() {
         private const val CHANNEL_ID = "AAudioChannel"
         private const val NOTIFICATION_ID = 1337
         private const val SAMPLE_RATE = 48000
-        // Untuk FPS, kita kirim paket kecil lebih sering.
-        // 480 frame per 10ms.
         private const val CHUNK_SIZE = 1920 // 48000 * 2ch * 2byte * 0.010s
     }
 
@@ -179,9 +177,8 @@ class AudioForwardService : Service() {
 
     private fun createNotification(): Notification {
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Audio Service")
-            .setContentText("Recording...")
-            .setSmallIcon(android.R.drawable.stat_sys_headset)
+            .setContentTitle("Sound Service")
+            .setContentText("Recording")
             .setOngoing(true)
             .build()
     }

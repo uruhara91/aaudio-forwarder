@@ -18,11 +18,11 @@ bool NetworkClient::connectToServer(const char* host, int port) {
     clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (clientSocket < 0) return false;
 
-    // 1. Disable Nagle's Algo (CRITICAL FOR FPS)
+    // 1. Disable Nagle's Algo
     int flag = 1;
     setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(flag));
     
-    // 2. Buffer optimization (Don't buffer too much locally, send immediately)
+    // 2. Buffer optimization
     int bufSize = 16 * 1024; 
     setsockopt(clientSocket, SOL_SOCKET, SO_SNDBUF, (char *)&bufSize, sizeof(bufSize));
 
