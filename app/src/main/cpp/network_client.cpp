@@ -31,7 +31,7 @@ bool NetworkClient::connectToServer(const char* host, int port) {
     int flag = 1;
     setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
     
-    int bufSize = 262144; // 256KB send buffer
+    int bufSize = 262144;
     setsockopt(clientSocket, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize));
 
     // Non-blocking mode untuk timeout
@@ -60,7 +60,7 @@ bool NetworkClient::connectToServer(const char* host, int port) {
         return false;
     }
 
-    // Wait for connection with timeout (5 seconds)
+    // Wait for connection with timeout
     fd_set writeSet;
     FD_ZERO(&writeSet);
     FD_SET(clientSocket, &writeSet);

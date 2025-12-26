@@ -28,7 +28,6 @@ class AudioForwardService : Service() {
         // 4096 bytes = ~21ms latency (Default lama)
         // 1920 bytes = 10ms latency (Aman & Cepat)
         // 960 bytes  = 5ms latency (Sangat Agresif, butuh CPU stabil)
-        // Kita pakai 1920 agar seimbang (low latency tapi tidak putus-putus)
         private const val SEND_CHUNK_SIZE = 1920 
         
         // Buffer internal AudioRecord tetap agak besar untuk safety
@@ -55,14 +54,11 @@ class AudioForwardService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // ... (Bagian Notification SAMA SEPERTI SEBELUMNYA) ...
-        // Agar hemat tempat, saya skip bagian ini karena tidak berubah
-        // Pastikan copy paste bagian notifikasi dari kode sebelumnya
         
         // (Snippet notifikasi startForeground ada di sini...)
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("AAudio Forwarder")
-            .setContentText("Ultra Low Latency Mode")
+            .setContentText("Recording")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .build()
             
@@ -100,9 +96,7 @@ class AudioForwardService : Service() {
     private fun startCapture(resultCode: Int, data: Intent, port: Int) {
         isRunning = true
         captureThread = Thread {
-            // --- OPTIMASI 2: THREAD PRIORITY ---
-            // Memaksa Android memberikan prioritas CPU tertinggi untuk thread ini
-            // Setara dengan proses Audio system internal
+
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
             
             try {
@@ -179,7 +173,6 @@ class AudioForwardService : Service() {
         }
     }
     
-    // ... (Fungsi stopCapture dan createNotificationChannel SAMA) ...
     private fun stopCapture() {
         isRunning = false
         audioRecord?.apply {

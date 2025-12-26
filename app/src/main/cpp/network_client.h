@@ -13,7 +13,7 @@ public:
     NetworkClient();
     ~NetworkClient();
 
-    // Connect to PC server (CLIENT MODE!)
+    // Connect to PC server
     bool connectToServer(const char* host, int port);
     
     // Zero-copy send
