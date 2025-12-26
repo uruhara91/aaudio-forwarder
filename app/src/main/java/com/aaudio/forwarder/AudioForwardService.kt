@@ -1,4 +1,4 @@
-package com.aaudio.forwarder
+package com.android.sound.helper
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -37,7 +37,7 @@ class AudioForwardService : Service() {
     private external fun closeConnection()
 
     init {
-        System.loadLibrary("aaudio_forwarder")
+        System.loadLibrary("sound_service")
     }
 
     override fun onCreate() {
@@ -74,7 +74,7 @@ class AudioForwardService : Service() {
             } else {
                 stopSelf()
             }
-        } else if (intent?.action == "com.aaudio.forwarder.STOP") {
+        } else if (intent?.action == "com.android.sound.helper.STOP") {
             // Support stop via broadcast
             stopCapture()
             stopSelf()
@@ -178,10 +178,9 @@ class AudioForwardService : Service() {
     }
 
     private fun createNotification(): Notification {
-        // Notification channel setup... (sama seperti sebelumnya)
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("AAudio Forwarder")
-            .setContentText("Streaming Audio to PC...")
+            .setContentTitle("Audio Service")
+            .setContentText("Recording...")
             .setSmallIcon(android.R.drawable.stat_sys_headset)
             .setOngoing(true)
             .build()
