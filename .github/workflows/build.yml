@@ -48,12 +48,12 @@ jobs:
     - name: Find and Rename APK
       run: |
         APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-        TARGET_PATH="app/build/outputs/apk/release/app-release.apk"
+        TARGET_PATH="app/build/outputs/apk/release/sndcpy.apk"
 
         if [ -n "$APK_PATH" ]; then
           if [ "$APK_PATH" != "$TARGET_PATH" ]; then
              mv "$APK_PATH" "$TARGET_PATH"
-             echo "🔄 Renamed $APK_PATH to app-release.apk"
+             echo "🔄 Renamed $APK_PATH to sndcpy.apk"
           else
              echo "✅ APK already named correctly."
           fi
@@ -69,7 +69,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: aaudio-forwarder-v2.0
-        path: app/build/outputs/apk/release/app-release.apk
+        path: app/build/outputs/apk/release/sndcpy.apk
         retention-days: 90
 
     - name: Summary
