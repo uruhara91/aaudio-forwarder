@@ -105,6 +105,7 @@ class AudioForwardService : Service() {
         val projectionManager = getSystemService(MediaProjectionManager::class.java)
         mediaProjection = projectionManager.getMediaProjection(resultCode, data)
 
+        // Konfigurasi Audio Record (Sama)
         val captureConfig = AudioPlaybackCaptureConfiguration.Builder(mediaProjection!!)
             .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
             .addMatchingUsage(AudioAttributes.USAGE_GAME)
@@ -120,24 +121,44 @@ class AudioForwardService : Service() {
         audioRecord = AudioRecord.Builder()
             .setAudioFormat(audioFormat)
             .setAudioPlaybackCaptureConfig(captureConfig)
-            .setBufferSizeInBytes(BUFFER_SIZE * 4)
+            // Buffer Capture agak besar gpp biar ga overflow, 
+            // latensi ditentukan seberapa cepat kita baca & kirim
+            .setBufferSizeInBytes(BUFFER_SIZE * 4) 
             .build()
 
         Log.i(TAG, "Connecting to PC:$port...")
-        if (!connectToPC("127.0.0.1", port)) {
-            Log.e(TAG, "Failed to connect to PC")
+        
+        // --- RETRY LOGIC (PENTING) ---
+        var connected = false
+        for (i in 1..5) {
+            // "127.0.0.1" di HP via adb reverse akan nembak ke PC
+            if (connectToPC("127.0.0.1", port)) {
+                connected = true
+                break
+            }
+            Log.w(TAG, "Connection attempt $i failed. Retrying...")
+            Thread.sleep(500) // Tunggu setengah detik
+        }
+
+        if (!connected) {
+            Log.e(TAG, "Failed to connect to PC after retries.")
             return
         }
+        
         Log.i(TAG, "Connected to PC successfully!")
 
         audioRecord!!.startRecording()
-        val buffer = ByteBuffer.allocateDirect(BUFFER_SIZE)
+        
+        // Direct Buffer (Zero Copy JNI)
+        val buffer = ByteBuffer.allocateDirect(BUFFER_SIZE) 
 
         while (isRunning) {
+            // Optimization: Blocking read, no sleep.
             val read = audioRecord!!.read(buffer, BUFFER_SIZE)
             if (read > 0) {
+                // Kirim langsung via JNI
                 if (!sendAudioDirect(buffer, read)) {
-                    Log.w(TAG, "Send failed, disconnecting...")
+                    Log.w(TAG, "Send failed (Socket closed?), disconnecting...")
                     break
                 }
                 buffer.clear()
