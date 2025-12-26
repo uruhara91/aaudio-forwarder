@@ -1,5 +1,4 @@
 #include <jni.h>
-#include <android/log.h>
 #include <memory>
 #include "network_client.h"
 
@@ -22,7 +21,6 @@ Java_com_aaudio_forwarder_AudioForwardService_connectToPC(
         client.reset();
         return JNI_FALSE;
     }
-    
     return JNI_TRUE;
 }
 
@@ -46,4 +44,4 @@ Java_com_aaudio_forwarder_AudioForwardService_closeConnection(JNIEnv*, jobject) 
     }
 }
 
-} // extern "C"
+}

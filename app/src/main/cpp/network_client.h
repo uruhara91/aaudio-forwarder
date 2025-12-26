@@ -13,14 +13,10 @@ public:
     NetworkClient();
     ~NetworkClient();
 
-    // Connect to PC server
     bool connectToServer(const char* host, int port);
-    
-    // Zero-copy send
     bool sendData(const void* data, size_t size);
-    
     void disconnect();
     bool isConnected() const;
 };
 
-#endif // NETWORK_CLIENT_H
+#endif

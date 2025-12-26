@@ -1,35 +1,26 @@
-# AAudio Forwarder ProGuard Rules
-
-# Keep native methods
+# --- 1. JNI SAFETY (WAJIB) ---
 -keepclasseswithmembernames class * {
     native <methods>;
 }
 
-# Keep service & activity
+# --- 2. ADB ENTRY POINTS (WAJIB) ---
 -keep class com.aaudio.forwarder.AudioForwardService {
-    public <methods>;
-    native <methods>;
+    <init>(...);
 }
-
 -keep class com.aaudio.forwarder.MainActivity {
-    public <methods>;
+    <init>(...);
 }
 
-# Keep audio & media projection classes
--keep class android.media.** { *; }
--keep class android.media.projection.** { *; }
-
-# Optimize but don't obfuscate for debugging
--dontobfuscate
--optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
-
-# Remove logging in release
+# --- 3. PERFORMANCE OPTIMIZATION ---
 -assumenosideeffects class android.util.Log {
-    public static *** d(...);
-    public static *** v(...);
-    public static *** i(...);
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int i(...);
+    public static int w(...);
+    public static int d(...);
+    public static int e(...);
 }
 
-# Keep line numbers for crash reports
+# --- 4. DEBUGGING INFO ---
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile

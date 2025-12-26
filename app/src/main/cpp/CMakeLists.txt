@@ -14,8 +14,12 @@ add_library(
     network_client.cpp
 )
 
-target_link_libraries(
-    aaudio_forwarder
-    log
-    android
+find_library( 
+        log-lib
+        log
+)
+
+target_link_libraries( 
+        aaudio_forwarder
+        ${log-lib}
 )
