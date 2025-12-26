@@ -12,7 +12,6 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Tidak perlu setContentView (Hemat resource & waktu)
 
         val projectionManager = getSystemService(MediaProjectionManager::class.java)
         startActivityForResult(
@@ -31,7 +30,6 @@ class MainActivity : Activity() {
                     putExtra("PORT", intent.getIntExtra("PORT", 28200))
                 }
 
-                // Start service lalu segera bunuh Activity
                 startForegroundService(serviceIntent)
             }
             finish() 
