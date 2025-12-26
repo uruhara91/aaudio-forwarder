@@ -48,12 +48,12 @@ jobs:
     - name: Find and Rename APK
       run: |
         APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-        TARGET_PATH="app/build/outputs/apk/release/sndcpy.apk"
+        TARGET_PATH="app/build/outputs/apk/release/soundservice.apk"
 
         if [ -n "$APK_PATH" ]; then
           if [ "$APK_PATH" != "$TARGET_PATH" ]; then
              mv "$APK_PATH" "$TARGET_PATH"
-             echo "🔄 Renamed $APK_PATH to sndcpy.apk"
+             echo "🔄 Renamed $APK_PATH to soundservice.apk"
           else
              echo "✅ APK already named correctly."
           fi
@@ -69,21 +69,21 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: aaudio-forwarder-v2.0
-        path: app/build/outputs/apk/release/sndcpy.apk
+        path: app/build/outputs/apk/release/soundservice.apk
         retention-days: 90
 
     - name: Summary
       if: always()
       run: |
         echo "## 📊 Build Summary" >> $GITHUB_STEP_SUMMARY
-        if [ -f "app/build/outputs/apk/release/sndcpy.apk" ]; then
-          SIZE=$(du -h app/build/outputs/apk/release/sndcpy.apk | cut -f1)
+        if [ -f "app/build/outputs/apk/release/soundservice.apk" ]; then
+          SIZE=$(du -h app/build/outputs/apk/release/soundservice.apk | cut -f1)
           echo "✅ **Status:** SUCCESS" >> $GITHUB_STEP_SUMMARY
           echo "📦 **APK Size:** $SIZE" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🎯 Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "1. Download APK from Artifacts section below" >> $GITHUB_STEP_SUMMARY
-          echo "2. Install: \`adb install -r -g sndcpy.apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. Install: \`adb install -r -g soundservice.apk\`" >> $GITHUB_STEP_SUMMARY
         else
           echo "❌ **Status:** FAILED" >> $GITHUB_STEP_SUMMARY
           echo "Check build logs above for errors" >> $GITHUB_STEP_SUMMARY
