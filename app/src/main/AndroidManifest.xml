@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
-        android:label="AAudio Forwarder"
+        android:label="Sound Helper"
         android:allowBackup="false"
         android:supportsRtl="true"
         tools:targetApi="34">

@@ -7,7 +7,7 @@ static std::unique_ptr<NetworkClient> client;
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_aaudio_forwarder_AudioForwardService_connectToPC(
+Java_com_android_sound_helper_AudioForwardService_connectToPC(
     JNIEnv* env, jobject, jstring host, jint port) {
     
     const char* hostStr = env->GetStringUTFChars(host, nullptr);
@@ -25,7 +25,7 @@ Java_com_aaudio_forwarder_AudioForwardService_connectToPC(
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_aaudio_forwarder_AudioForwardService_sendAudioDirect(
+Java_com_android_sound_helper_AudioForwardService_sendAudioDirect(
     JNIEnv* env, jobject, jobject directBuffer, jint size) {
     
     if (!client || !client->isConnected()) return JNI_FALSE;
@@ -37,7 +37,7 @@ Java_com_aaudio_forwarder_AudioForwardService_sendAudioDirect(
 }
 
 JNIEXPORT void JNICALL
-Java_com_aaudio_forwarder_AudioForwardService_closeConnection(JNIEnv*, jobject) {
+Java_com_android_sound_helper_AudioForwardService_closeConnection(JNIEnv*, jobject) {
     if (client) {
         client->disconnect();
         client.reset();

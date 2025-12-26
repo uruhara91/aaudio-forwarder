@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    namespace = "com.aaudio.forwarder"
+    namespace = "com.android.sound.helper"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.aaudio.forwarder"
+        applicationId = "com.android.sound.helper"
         minSdk = 29
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 1
+        versionName = "1.1"
 
         ndk {
             abiFilters.add("arm64-v8a")
