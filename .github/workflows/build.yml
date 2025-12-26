@@ -76,14 +76,14 @@ jobs:
       if: always()
       run: |
         echo "## 📊 Build Summary" >> $GITHUB_STEP_SUMMARY
-        if [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
-          SIZE=$(du -h app/build/outputs/apk/release/app-release.apk | cut -f1)
+        if [ -f "app/build/outputs/apk/release/sndcpy.apk" ]; then
+          SIZE=$(du -h app/build/outputs/apk/release/sndcpy.apk | cut -f1)
           echo "✅ **Status:** SUCCESS" >> $GITHUB_STEP_SUMMARY
           echo "📦 **APK Size:** $SIZE" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🎯 Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "1. Download APK from Artifacts section below" >> $GITHUB_STEP_SUMMARY
-          echo "2. Install: \`adb install -r -g app-release.apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. Install: \`adb install -r -g sndcpy.apk\`" >> $GITHUB_STEP_SUMMARY
         else
           echo "❌ **Status:** FAILED" >> $GITHUB_STEP_SUMMARY
           echo "Check build logs above for errors" >> $GITHUB_STEP_SUMMARY
