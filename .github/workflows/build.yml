@@ -1,49 +1,93 @@
-name: Build AAudio Forwarder Release
+name: Build AAudio Forwarder
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
-    - name: Setup JDK 17
+
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        distribution: 'temurin'
         java-version: '17'
-    
-    - name: Setup Android NDK
-      uses: nttld/setup-ndk@v1
+        distribution: 'temurin'
+
+    - name: Setup Android SDK & NDK
+      uses: android-actions/setup-android@v3
       with:
-        ndk-version: r26b
-        add-to-path: true
+        packages: 'ndk;25.2.9519653 cmake;3.22.1 cmdline-tools;latest'
     
+    - name: Decode Keystore
+      env:
+        ENCODED_STRING: ${{ secrets.KEYSTORE_BASE64 }}
+      run: |
+        # Membersihkan string dari enter/spasi sebelum decode
+        echo "$ENCODED_STRING" | tr -d '\r\n' | base64 --decode > app/release-key.jks
+
     - name: Setup Gradle
       uses: gradle/gradle-build-action@v2
       with:
         gradle-version: 8.2
 
-    - name: Decode Keystore
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release-key.jks
-    
-    - name: Build APK Release
-      run: gradle assembleRelease --no-daemon
+    - name: Build Release APK
       env:
+        ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/25.2.9519653
+        # --- FIX: Inject Secrets ke Environment Gradle ---
+        STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-    
-    # 3. Upload Hasilnya
-    - name: Upload APK
+      run: gradle assembleRelease -Pandroid.injected.cmake.version=3.22.1 --no-daemon --stacktrace
+
+    - name: Find and Rename APK
+      run: |
+        APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+        TARGET_PATH="app/build/outputs/apk/release/app-release.apk"
+
+        if [ -n "$APK_PATH" ]; then
+          # Cek: Kalau path asal BEDA dengan target, baru rename. Kalau sama, skip.
+          if [ "$APK_PATH" != "$TARGET_PATH" ]; then
+             mv "$APK_PATH" "$TARGET_PATH"
+             echo "🔄 Renamed $APK_PATH to app-release.apk"
+          else
+             echo "✅ APK already named correctly."
+          fi
+          
+          echo "✅ APK Size: $(du -h "$TARGET_PATH" | cut -f1)"
+        else
+          echo "❌ APK not found!"
+          ls -R app/build/outputs/ || echo "Build output directory not found"
+          exit 1
+        fi
+
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: aaudio-forwarder-release
-        path: app/build/outputs/apk/release/*.apk
+        name: aaudio-forwarder-v2.0
+        path: app/build/outputs/apk/release/app-release.apk
+        retention-days: 90
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "## 📊 Build Summary" >> $GITHUB_STEP_SUMMARY
+        if [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
+          SIZE=$(du -h app/build/outputs/apk/release/app-release.apk | cut -f1)
+          echo "✅ **Status:** SUCCESS" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **APK Size:** $SIZE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download APK from Artifacts section below" >> $GITHUB_STEP_SUMMARY
+          echo "2. Install: \`adb install -r -g app-release.apk\`" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Status:** FAILED" >> $GITHUB_STEP_SUMMARY
+          echo "Check build logs above for errors" >> $GITHUB_STEP_SUMMARY
+        fi

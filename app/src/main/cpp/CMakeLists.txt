@@ -1,25 +1,21 @@
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.10.2)
 
 project("aaudio_forwarder")
 
-add_library(
-        aaudio_forwarder
-        SHARED
-        main.cpp
-        network_sender.cpp)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -O3 -ffast-math -funroll-loops -fno-plt -flto")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-protector -fvisibility=hidden -fvisibility-inlines-hidden")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections,--strip-all -flto")
 
-find_library(
-        log-lib
-        log)
+add_library(
+    aaudio_forwarder
+    SHARED
+    jni_bridge.cpp
+    network_client.cpp
+)
 
 target_link_libraries(
-        aaudio_forwarder
-        ${log-lib}
-        android)
-
-target_link_options(aaudio_forwarder PRIVATE
-    "-flto"
-    "-Wl,--gc-sections"
-    "-Wl,--icf=all"
-    "-Wl,-O3"
+    aaudio_forwarder
+    log
+    android
 )
