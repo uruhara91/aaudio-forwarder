@@ -19,7 +19,3 @@ target_link_libraries(
     log
     android
 )
-
-set_target_properties(aaudio_forwarder PROPERTIES
-    INTERPROCEDURAL_OPTIMIZATION TRUE
-)
