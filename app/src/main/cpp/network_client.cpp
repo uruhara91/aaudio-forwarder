@@ -4,6 +4,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <cstring>
+#include <fcntl.h> 
 
 NetworkClient::NetworkClient() : clientSocket(-1), connected(false) {}
 
@@ -17,19 +18,13 @@ bool NetworkClient::connectToServer(const char* host, int port) {
     clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (clientSocket < 0) return false;
 
-    // 1. Disable Nagle's Algo
+    // 1. Disable Nagle's Algo (CRITICAL FOR FPS)
     int flag = 1;
-    setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+    setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(flag));
     
-    // 2. Buffer secukupnya
-    int bufSize = 64 * 1024; 
-    setsockopt(clientSocket, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize));
-
-    // 3. Send Timeout (2 detik) agar tidak blocking selamanya jika error
-    struct timeval timeout;
-    timeout.tv_sec = 2;
-    timeout.tv_usec = 0;
-    setsockopt(clientSocket, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    // 2. Buffer optimization (Don't buffer too much locally, send immediately)
+    int bufSize = 16 * 1024; 
+    setsockopt(clientSocket, SOL_SOCKET, SO_SNDBUF, (char *)&bufSize, sizeof(bufSize));
 
     struct sockaddr_in serverAddr;
     memset(&serverAddr, 0, sizeof(serverAddr));
@@ -41,6 +36,7 @@ bool NetworkClient::connectToServer(const char* host, int port) {
         return false;
     }
 
+    // Blocking connect with timeout handled by caller or OS
     if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
         close(clientSocket);
         return false;
@@ -53,14 +49,14 @@ bool NetworkClient::connectToServer(const char* host, int port) {
 bool NetworkClient::sendData(const void* data, size_t size) {
     if (!connected || clientSocket < 0) return false;
 
-    // MSG_NOSIGNAL
+    // Blocking send is actually preferred here to ensure order and buffer management
+    // But we use MSG_NOSIGNAL to prevent SIGPIPE crash
     ssize_t sent = send(clientSocket, data, size, MSG_NOSIGNAL);
     
     if (sent != (ssize_t)size) {
         disconnect();
         return false;
     }
-
     return true;
 }
 
