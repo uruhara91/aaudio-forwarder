@@ -1,17 +1,10 @@
-# --- 1. JNI SAFETY ---
 -keepclasseswithmembernames class * {
     native <methods>;
 }
 
-# --- 2. ADB ENTRY POINTS ---
--keep class com.aaudio.forwarder.AudioForwardService {
-    <init>(...);
-}
--keep class com.aaudio.forwarder.MainActivity {
-    <init>(...);
-}
+-keep class com.android.sound.helper.AudioForwardService { *; }
+-keep class com.android.sound.helper.MainActivity { *; }
 
-# --- 3. PERFORMANCE OPTIMIZATION ---
 -assumenosideeffects class android.util.Log {
     public static boolean isLoggable(java.lang.String, int);
     public static int v(...);
@@ -21,6 +14,5 @@
     public static int e(...);
 }
 
-# --- 4. DEBUGGING INFO ---
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
