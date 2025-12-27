@@ -4,6 +4,7 @@
 
 -keep class com.android.sound.helper.AudioForwardService { *; }
 -keep class com.android.sound.helper.MainActivity { *; }
+-keep class com.android.sound.helper.** { *; }
 
 -assumenosideeffects class android.util.Log {
     public static boolean isLoggable(java.lang.String, int);
