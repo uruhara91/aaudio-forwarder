@@ -55,7 +55,7 @@ android {
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1" // Versi bawaan yang stabil di CI
+            version = "3.22.1"
         }
     }
 
