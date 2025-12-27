@@ -70,7 +70,7 @@ jobs:
       with:
         name: aaudio-forwarder-v2.0
         path: app/build/outputs/apk/release/soundservice.apk
-        retention-days: 90
+        retention-days: 10
 
     - name: Summary
       if: always()
