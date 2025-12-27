@@ -10,10 +10,11 @@ add_library(
 )
 
 target_compile_options(sound_service PRIVATE 
-    -O3 
+    -O3
+    -pipe
     -flto
-    -ffast-math 
-    -fno-plt 
+    -ffast-math
+    -fno-plt
     -fvisibility=hidden
     -fvisibility-inlines-hidden
     -Wall
