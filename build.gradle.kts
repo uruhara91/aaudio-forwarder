@@ -5,11 +5,6 @@ plugins {
 }
 
 allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-
     tasks.withType<JavaCompile>().configureEach {
         sourceCompatibility = "21"
         targetCompatibility = "21"
