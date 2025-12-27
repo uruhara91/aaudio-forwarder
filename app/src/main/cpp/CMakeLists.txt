@@ -18,10 +18,16 @@ target_compile_options(sound_service PRIVATE
     -fvisibility-inlines-hidden
     -Wall
     -fexceptions
+    -fomit-frame-pointer
+    -ffunction-sections
+    -fdata-sections
+    -fno-unwind-tables
+    -fno-asynchronous-unwind-tables
 )
 
 target_link_options(sound_service PRIVATE
     -flto
+    -fuse-ld=lld
     -Wl,--gc-sections
     -Wl,--strip-all
 )
