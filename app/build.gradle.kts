@@ -72,5 +72,5 @@ kotlin {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.core:core-ktx:1.16.0")
 }
