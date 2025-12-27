@@ -28,7 +28,7 @@ target_link_options(sound_service PRIVATE
     -flto
     -fuse-ld=lld
     -Wl,--gc-sections
-    #-Wl,--strip-all
+    -Wl,--strip-all
 )
 
 set_target_properties(sound_service PROPERTIES
