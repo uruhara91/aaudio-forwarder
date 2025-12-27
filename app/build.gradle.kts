@@ -14,11 +14,10 @@ android {
         versionCode = 1
         versionName = "1.1"
 
-        ndkVersion = "27.0.12077973" 
+        ndkVersion = "27.3.13750724" 
 
         externalNativeBuild {
             cmake {
-                // Pakai C++20 karena kamu di CachyOS (modern), biar makin efisien!
                 arguments("-DANDROID_STL=c++_shared", "-DCMAKE_CXX_STANDARD=20")
             }
         }

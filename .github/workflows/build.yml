@@ -25,7 +25,7 @@ jobs:
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: 11.0
-        packages: 'ndk;27.0.12077973 cmake;3.22.1 build-tools;35.0.0 platform-tools platforms;android-35'
+        packages: 'ndk;27.3.13750724 cmake;3.22.1 build-tools;35.0.0 platform-tools platforms;android-35'
 
     - name: Decode Keystore
       env:
@@ -46,7 +46,7 @@ jobs:
         STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      run: ./gradlew assembleRelease --no-daemon --stacktrace
+      run: ./gradlew assembleRelease --no-daemon --stacktrace --info
 
     - name: Find and Rename APK
       run: |
