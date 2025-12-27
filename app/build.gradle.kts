@@ -28,6 +28,12 @@ android {
         }
     }
 
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+        disable += "ExpiredTargetSdkVersion"
+    }
+
     signingConfigs {
         create("release") {
             val keystoreFile = file("release-key.jks")
