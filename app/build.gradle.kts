@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.android.sound.helper"
-    compileSdk = 35 // Gunakan 35 untuk stabilitas terbaik saat ini
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.android.sound.helper"
@@ -45,11 +45,11 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            zipAlignEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
         debug {
-            // Tambahkan ini agar saat testing di lokal/CachyOS lebih cepat
             isMinifyEnabled = false
         }
     }
@@ -67,7 +67,6 @@ android {
     }
 }
 
-// Perbaikan bagian Kotlin agar tidak error
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
@@ -75,5 +74,5 @@ kotlin {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.core:core-ktx:1.17.0")
 }

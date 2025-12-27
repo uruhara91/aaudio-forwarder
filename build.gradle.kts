@@ -5,12 +5,18 @@ plugins {
 }
 
 allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
     tasks.withType<JavaCompile>().configureEach {
+        sourceCompatibility = "21"
+        targetCompatibility = "21"
         options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
     }
 }
 
-// Updated clean task for modern Gradle 9.x compatibility
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
