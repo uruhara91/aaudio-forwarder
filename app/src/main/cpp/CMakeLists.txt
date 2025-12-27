@@ -1,17 +1,34 @@
-cmake_minimum_required(VERSION 3.10.2)
+cmake_minimum_required(VERSION 3.22.1)
 
 project("sound_service")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -O3 -ffast-math -fno-plt -flto")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-protector -fvisibility=hidden -fvisibility-inlines-hidden")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections,--strip-all -flto")
 
 add_library(
     sound_service
     SHARED
     jni_bridge.cpp
     network_client.cpp
+)
+
+target_compile_options(sound_service PRIVATE 
+    -O3 
+    -flto
+    -ffast-math 
+    -fno-plt 
+    -fvisibility=hidden
+    -fvisibility-inlines-hidden
+    -Wall
+    -fexceptions
+)
+
+target_link_options(sound_service PRIVATE
+    -flto
+    -Wl,--gc-sections
+    -Wl,--strip-all
+)
+
+set_target_properties(sound_service PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
 )
 
 find_library( 
