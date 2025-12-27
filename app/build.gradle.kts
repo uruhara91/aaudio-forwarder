@@ -29,7 +29,6 @@ android {
 
     signingConfigs {
         create("release") {
-            // Logika signing kamu sudah bagus untuk CI/CD
             val keystoreFile = file("release-key.jks")
             if (keystoreFile.exists()) {
                 storeFile = keystoreFile

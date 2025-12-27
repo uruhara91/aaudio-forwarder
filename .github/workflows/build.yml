@@ -22,7 +22,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Setup Android SDK & NDK
-      uses: android-actions/setup-android@v3
+      uses: android-actions/setup-android@v4
       with:
         cmdline-tools-version: 12.0
         packages: 'ndk;27.3.13750724 cmake;3.22.1 build-tools;35.0.0 platform-tools platforms;android-35'
@@ -31,7 +31,6 @@ jobs:
       env:
         ENCODED_STRING: ${{ secrets.KEYSTORE_BASE64 }}
       run: |
-        # Pastikan folder app ada sebelum menulis file
         mkdir -p app
         echo "$ENCODED_STRING" | base64 --decode > app/release-key.jks
 
