@@ -12,7 +12,7 @@
         android:label="Sound Service"
         android:allowBackup="false"
         android:supportsRtl="true"
-        tools:targetApi="34">
+        tools:targetApi="35">
 
         <activity
             android:name=".MainActivity"
