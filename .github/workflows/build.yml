@@ -25,7 +25,7 @@ jobs:
       uses: android-actions/setup-android@v4
       with:
         cmdline-tools-version: 12.0
-        packages: 'ndk;27.3.13750724 cmake;3.22.1 build-tools;35.0.0 platform-tools platforms;android-35'
+        packages: 'ndk;29.0.14206865 cmake;3.22.1 build-tools;35.0.0 platform-tools platforms;android-35'
 
     - name: Decode Keystore
       env:
@@ -49,7 +49,6 @@ jobs:
 
     - name: Find and Rename APK
       run: |
-        # Cari APK release (unsigned atau signed)
         APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
         TARGET_PATH="app/build/outputs/apk/release/soundservice.apk"
 
@@ -60,11 +59,9 @@ jobs:
           else
              echo "✅ APK already named correctly."
           fi
-          
           echo "✅ APK Size: $(du -h "$TARGET_PATH" | cut -f1)"
         else
           echo "❌ APK not found!"
-          ls -R app/build/outputs/ || echo "Build output directory not found"
           exit 1
         fi
 
@@ -74,16 +71,3 @@ jobs:
         name: aaudio-forwarder-v2.0
         path: app/build/outputs/apk/release/soundservice.apk
         retention-days: 1
-
-    - name: Summary
-      if: always()
-      run: |
-        echo "## 📊 Build Summary" >> $GITHUB_STEP_SUMMARY
-        if [ -f "app/build/outputs/apk/release/soundservice.apk" ]; then
-          SIZE=$(du -h app/build/outputs/apk/release/soundservice.apk | cut -f1)
-          echo "✅ **Status:** SUCCESS" >> $GITHUB_STEP_SUMMARY
-          echo "📦 **APK Size:** $SIZE" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "❌ **Status:** FAILED" >> $GITHUB_STEP_SUMMARY
-          echo "Check build logs above for errors" >> $GITHUB_STEP_SUMMARY
-        fi

@@ -5,23 +5,24 @@ plugins {
 
 android {
     namespace = "com.android.sound.helper"
-    compileSdk = 35
+    compileSdk = 35 
 
     defaultConfig {
         applicationId = "com.android.sound.helper"
         minSdk = 30
-        targetSdk = 35 
-        versionCode = 1
-        versionName = "1.1"
+        targetSdk = 35
+        versionCode = 2
+        versionName = "2.0"
 
-        ndkVersion = "27.3.13750724" 
+        ndkVersion = "29.0.14206865"
 
         externalNativeBuild {
             cmake {
-                arguments("-DANDROID_STL=c++_static", "-DCMAKE_CXX_STANDARD=20")
+                cppFlags("-O3", "-flto", "-fvisibility=hidden", "-std=c++2b", "-fexceptions")
+                arguments("-DANDROID_STL=c++_static")
             }
         }
-        
+
         ndk {
             abiFilters.add("arm64-v8a")
         }
@@ -54,7 +55,7 @@ android {
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
+            version = "3.22.1" // Versi bawaan yang stabil di CI
         }
     }
 
