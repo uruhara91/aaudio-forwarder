@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.android.sound.helper"
-    compileSdk = 30 
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.android.sound.helper"
@@ -72,5 +72,5 @@ kotlin {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.core:core-ktx:1.17.0")
 }
