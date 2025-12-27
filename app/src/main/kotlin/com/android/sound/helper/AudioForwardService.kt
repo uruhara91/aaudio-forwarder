@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
-import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioPlaybackCaptureConfiguration
@@ -14,66 +13,70 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.os.Process
+import android.util.Log
 import java.nio.ByteBuffer
 
 class AudioForwardService : Service() {
     companion object {
-        private const val CHANNEL_ID = "AAudioChannel"
+        private const val TAG = "AudioForwardService"
+        private const val CHANNEL_ID = "SoundServiceChannel"
         private const val NOTIFICATION_ID = 1337
         private const val SAMPLE_RATE = 48000
-        private const val CHUNK_SIZE = 1920 // 48000 * 2ch * 2byte * 0.010s
+        private const val CHUNK_SIZE = 1920 
     }
 
     private var mediaProjection: MediaProjection? = null
     private var audioRecord: AudioRecord? = null
     @Volatile private var isRunning = false
+    private var wakeLock: PowerManager.WakeLock? = null
 
-    // JNI Declarations
+    // JNI
     private external fun connectToPC(host: String, port: Int): Boolean
     private external fun sendAudioDirect(buffer: ByteBuffer, size: Int): Boolean
     private external fun closeConnection()
 
     init {
-        System.loadLibrary("sound_service")
+        try {
+            System.loadLibrary("sound_service")
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "Failed to load native library: ${e.message}")
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        
+        // Wakelock
+        val powerManager = getSystemService(PowerManager::class.java)
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SoundService::Lock")
+        wakeLock?.acquire(10*60*1000L /*10 minutes timeout*/)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = createNotification()
-        
-        if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        // 1. Promote Foreground
+        startForeground(NOTIFICATION_ID, createNotification())
 
         if (intent?.action == "START" && !isRunning) {
             val resultCode = intent.getIntExtra("RESULT_CODE", 0)
+            val port = intent.getIntExtra("PORT", 28200)
             
-            // Handle Parcelable deprecation
             val data = if (Build.VERSION.SDK_INT >= 33) {
                 intent.getParcelableExtra("DATA", Intent::class.java)
             } else {
                 @Suppress("DEPRECATION")
                 intent.getParcelableExtra("DATA")
             }
-            
-            // Broadcast receiver intent from ADB usually sends String extra for port, check safely
-            // But since we use --ei in adb command, it is int.
-            val port = intent.getIntExtra("PORT", 28200)
 
             if (resultCode != 0 && data != null) {
                 startCapture(resultCode, data, port)
             } else {
+                Log.e(TAG, "Invalid Intent Data")
                 stopSelf()
             }
         } else if (intent?.action == "com.android.sound.helper.STOP") {
-            // Support stop via broadcast
             stopCapture()
             stopSelf()
         }
@@ -84,23 +87,23 @@ class AudioForwardService : Service() {
     private fun startCapture(resultCode: Int, data: Intent, port: Int) {
         isRunning = true
         Thread {
-            // RT Priority is crucial for audio glitch-free streaming
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
             
             try {
-                // 1. Connection Logic (Retry hard)
-                // HP Connect ke Localhost (yang di-forward ke PC via ADB Reverse)
+                // Connection Retry Logic
                 var connected = false
-                for (i in 1..20) { // Coba selama 2 detik
+                for (i in 0 until 10) { 
+                    
                     if (connectToPC("127.0.0.1", port)) {
                         connected = true
+                        Log.d(TAG, "Connected to PC on port $port")
                         break
                     }
-                    Thread.sleep(100)
+                    Thread.sleep(200)
                 }
 
                 if (!connected) {
-                    // Gagal connect, matikan service agar user tau
+                    Log.e(TAG, "Failed to connect to PC")
                     stopSelf()
                     return@Thread
                 }
@@ -108,6 +111,7 @@ class AudioForwardService : Service() {
                 val pm = getSystemService(MediaProjectionManager::class.java)
                 mediaProjection = pm.getMediaProjection(resultCode, data)
                 
+                // Config Audio Capture
                 val config = AudioPlaybackCaptureConfiguration.Builder(mediaProjection!!)
                     .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
                     .addMatchingUsage(AudioAttributes.USAGE_GAME)
@@ -120,39 +124,41 @@ class AudioForwardService : Service() {
                     .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
                     .build()
 
-                // Buffer OS minimal x2 biar aman
-                val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT)
+                // Internal Buffer
+                val minInternalBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT)
                 
                 audioRecord = AudioRecord.Builder()
                     .setAudioFormat(format)
-                    .setBufferSizeInBytes(maxOf(minBuf, CHUNK_SIZE * 4))
+                    .setBufferSizeInBytes(maxOf(minInternalBuf, CHUNK_SIZE * 8))
                     .setAudioPlaybackCaptureConfig(config)
                     .build()
 
                 audioRecord?.startRecording()
                 
-                // DIRECT BUFFER: Zero Copy dari Java side ke JNI
+                // DIRECT BUFFER
                 val buffer = ByteBuffer.allocateDirect(CHUNK_SIZE)
 
                 while (isRunning) {
-                    // Blocking read. Akan pause thread sampai 1920 bytes (10ms) terkumpul.
-                    val read = audioRecord?.read(buffer, CHUNK_SIZE) ?: -1
+                    // Read blocking.
+                    val readBytes = audioRecord?.read(buffer, CHUNK_SIZE) ?: -1
                     
-                    if (read > 0) {
-                        // Kirim ke C++ JNI
-                        if (!sendAudioDirect(buffer, read)) {
-                            // Connection lost
+                    if (readBytes > 0) {
+                        // Raw pointer JNI
+                        if (!sendAudioDirect(buffer, readBytes)) {
+                            Log.e(TAG, "Socket send failed, stopping")
                             break
                         }
                         buffer.clear()
-                    } else if (read < 0) {
-                        // Error reading audio
-                        break
+                    } else {
+                        if (readBytes == AudioRecord.ERROR_INVALID_OPERATION || readBytes == AudioRecord.ERROR_BAD_VALUE) {
+                            Log.e(TAG, "AudioRecord Error: $readBytes")
+                            break
+                        }
                     }
                 }
 
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Crash in capture loop", e)
             } finally {
                 stopCapture()
             }
@@ -170,15 +176,23 @@ class AudioForwardService : Service() {
             mediaProjection?.stop()
         } catch (e: Exception) {}
         
+        closeConnection()
+        
         mediaProjection = null
         audioRecord = null
-        closeConnection()
     }
 
     private fun createNotification(): Notification {
-        return Notification.Builder(this, CHANNEL_ID)
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }
+        
+        return builder
             .setContentTitle("Sound Service")
-            .setContentText("Recording")
+            .setContentText("Recording...")
             .setOngoing(true)
             .build()
     }
@@ -192,6 +206,7 @@ class AudioForwardService : Service() {
     
     override fun onDestroy() {
         stopCapture()
+        wakeLock?.release()
         super.onDestroy()
     }
 

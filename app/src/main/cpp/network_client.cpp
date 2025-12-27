@@ -4,7 +4,6 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <cstring>
-#include <fcntl.h> 
 
 NetworkClient::NetworkClient() : clientSocket(-1), connected(false) {}
 
@@ -19,12 +18,12 @@ bool NetworkClient::connectToServer(const char* host, int port) {
     if (clientSocket < 0) return false;
 
     // 1. Disable Nagle's Algo
-    int flag = 1;
-    setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(flag));
+    int one = 1;
+    setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
     
     // 2. Buffer optimization
-    int bufSize = 16 * 1024; 
-    setsockopt(clientSocket, SOL_SOCKET, SO_SNDBUF, (char *)&bufSize, sizeof(bufSize));
+    int bufSize = 32 * 1024; 
+    setsockopt(clientSocket, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize));
 
     struct sockaddr_in serverAddr;
     memset(&serverAddr, 0, sizeof(serverAddr));
@@ -36,7 +35,7 @@ bool NetworkClient::connectToServer(const char* host, int port) {
         return false;
     }
 
-    // Blocking connect with timeout handled by caller or OS
+    // Connect block
     if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
         close(clientSocket);
         return false;
@@ -49,8 +48,7 @@ bool NetworkClient::connectToServer(const char* host, int port) {
 bool NetworkClient::sendData(const void* data, size_t size) {
     if (!connected || clientSocket < 0) return false;
 
-    // Blocking send is actually preferred here to ensure order and buffer management
-    // But we use MSG_NOSIGNAL to prevent SIGPIPE crash
+    // MSG_NOSIGNAL
     ssize_t sent = send(clientSocket, data, size, MSG_NOSIGNAL);
     
     if (sent != (ssize_t)size) {

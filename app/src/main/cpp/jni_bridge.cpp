@@ -12,16 +12,13 @@ Java_com_android_sound_helper_AudioForwardService_connectToPC(
     
     const char* hostStr = env->GetStringUTFChars(host, nullptr);
     
+    // Reset client
     client = std::make_unique<NetworkClient>();
     bool success = client->connectToServer(hostStr, port);
     
     env->ReleaseStringUTFChars(host, hostStr);
     
-    if (!success) {
-        client.reset();
-        return JNI_FALSE;
-    }
-    return JNI_TRUE;
+    return success ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
@@ -30,6 +27,7 @@ Java_com_android_sound_helper_AudioForwardService_sendAudioDirect(
     
     if (!client || !client->isConnected()) return JNI_FALSE;
     
+    // ZERO COPY
     void* data = env->GetDirectBufferAddress(directBuffer);
     if (!data) return JNI_FALSE;
     
