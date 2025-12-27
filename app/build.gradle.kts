@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.android.sound.helper"
-    compileSdk = 35 
+    compileSdk = 30 
 
     defaultConfig {
         applicationId = "com.android.sound.helper"
         minSdk = 30
-        targetSdk = 35
+        targetSdk = 30
         versionCode = 2
         versionName = "2.0"
 
