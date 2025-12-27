@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AAudio Forwarder"
-include ':app'
+rootProject.name = "Audio Forwarder"
+include(":app")

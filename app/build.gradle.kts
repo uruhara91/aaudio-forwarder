@@ -5,15 +5,24 @@ plugins {
 
 android {
     namespace = "com.android.sound.helper"
-    compileSdk = 34
+    compileSdk = 35 // Gunakan 35 untuk stabilitas terbaik saat ini
 
     defaultConfig {
         applicationId = "com.android.sound.helper"
-        minSdk = 29
-        targetSdk = 34
+        minSdk = 30
+        targetSdk = 35 
         versionCode = 1
         versionName = "1.1"
 
+        ndkVersion = "27.0.12077973" 
+
+        externalNativeBuild {
+            cmake {
+                // Pakai C++20 karena kamu di CachyOS (modern), biar makin efisien!
+                arguments("-DANDROID_STL=c++_shared", "-DCMAKE_CXX_STANDARD=20")
+            }
+        }
+        
         ndk {
             abiFilters.add("arm64-v8a")
         }
@@ -21,15 +30,13 @@ android {
 
     signingConfigs {
         create("release") {
+            // Logika signing kamu sudah bagus untuk CI/CD
             val keystoreFile = file("release-key.jks")
             if (keystoreFile.exists()) {
                 storeFile = keystoreFile
                 storePassword = System.getenv("STORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
-            } else {
-                println("⚠️ Warning: release-key.jks not found. Using debug signing.")
-                storeFile = file("debug.keystore") 
             }
         }
     }
@@ -39,12 +46,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            
             signingConfig = signingConfigs.getByName("release")
-            
-            ndk {
-                debugSymbolLevel = "NONE"
-            }
+        }
+        debug {
+            // Tambahkan ini agar saat testing di lokal/CachyOS lebih cepat
+            isMinifyEnabled = false
         }
     }
 
@@ -54,25 +60,20 @@ android {
             version = "3.22.1"
         }
     }
-    
-    defaultConfig {
-        externalNativeBuild {
-            cmake {
-                arguments("-DANDROID_STL=c++_shared")
-            }
-        }
-    }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
+}
 
-    kotlinOptions {
-        jvmTarget = "1.8"
+// Perbaikan bagian Kotlin agar tidak error
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.core:core-ktx:1.15.0")
 }
