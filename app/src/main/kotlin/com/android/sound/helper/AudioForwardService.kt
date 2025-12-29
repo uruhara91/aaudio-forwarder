@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioPlaybackCaptureConfiguration
@@ -17,6 +18,7 @@ import android.os.PowerManager
 import android.os.Process
 import android.util.Log
 import java.nio.ByteBuffer
+import kotlin.math.max
 
 class AudioForwardService : Service() {
     companion object {
@@ -49,15 +51,20 @@ class AudioForwardService : Service() {
         super.onCreate()
         createNotificationChannel()
         
-        // Wakelock
+        // Wakelock untuk mencegah HP tidur saat streaming
         val powerManager = getSystemService(PowerManager::class.java)
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SoundService::Lock")
-        wakeLock?.acquire(10*60*1000L /*10 minutes timeout*/)
+        wakeLock?.acquire(12*60*60*1000L) // 12 hours safety limit
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // 1. Promote Foreground
-        startForeground(NOTIFICATION_ID, createNotification())
+        // 1. Promote Foreground SEGERA sebelum logic lain berjalan
+        val notification = createNotification()
+        if (Build.VERSION.SDK_INT >= 29) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
 
         if (intent?.action == "START" && !isRunning) {
             val resultCode = intent.getIntExtra("RESULT_CODE", 0)
@@ -90,20 +97,19 @@ class AudioForwardService : Service() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
             
             try {
-                // Connection Retry Logic
+                // Connection Retry Logic (Wait for adb reverse to kick in)
                 var connected = false
-                for (i in 0 until 10) { 
-                    
+                for (i in 0 until 15) { 
                     if (connectToPC("127.0.0.1", port)) {
                         connected = true
                         Log.d(TAG, "Connected to PC on port $port")
                         break
                     }
-                    Thread.sleep(200)
+                    Thread.sleep(300)
                 }
 
                 if (!connected) {
-                    Log.e(TAG, "Failed to connect to PC")
+                    Log.e(TAG, "Failed to connect to PC. Is ADB Reverse enabled?")
                     stopSelf()
                     return@Thread
                 }
@@ -124,12 +130,12 @@ class AudioForwardService : Service() {
                     .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
                     .build()
 
-                // Internal Buffer
                 val minInternalBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT)
                 
+                // SecurityException sering terjadi di sini jika permission belum granted
                 audioRecord = AudioRecord.Builder()
                     .setAudioFormat(format)
-                    .setBufferSizeInBytes(maxOf(minInternalBuf, CHUNK_SIZE * 8))
+                    .setBufferSizeInBytes(max(minInternalBuf, CHUNK_SIZE * 4))
                     .setAudioPlaybackCaptureConfig(config)
                     .build()
 
@@ -139,11 +145,9 @@ class AudioForwardService : Service() {
                 val buffer = ByteBuffer.allocateDirect(CHUNK_SIZE)
 
                 while (isRunning) {
-                    // Read blocking.
                     val readBytes = audioRecord?.read(buffer, CHUNK_SIZE) ?: -1
                     
                     if (readBytes > 0) {
-                        // Raw pointer JNI
                         if (!sendAudioDirect(buffer, readBytes)) {
                             Log.e(TAG, "Socket send failed, stopping")
                             break
@@ -152,11 +156,13 @@ class AudioForwardService : Service() {
                     } else {
                         if (readBytes == AudioRecord.ERROR_INVALID_OPERATION || readBytes == AudioRecord.ERROR_BAD_VALUE) {
                             Log.e(TAG, "AudioRecord Error: $readBytes")
-                            break
+                            Thread.sleep(100) // prevent spin loop
                         }
                     }
                 }
 
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Permission denied during audio setup", e)
             } catch (e: Exception) {
                 Log.e(TAG, "Crash in capture loop", e)
             } finally {
@@ -168,7 +174,9 @@ class AudioForwardService : Service() {
     private fun stopCapture() {
         isRunning = false
         try {
-            audioRecord?.stop()
+            if (audioRecord?.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                audioRecord?.stop()
+            }
             audioRecord?.release()
         } catch (e: Exception) {}
         
@@ -193,6 +201,7 @@ class AudioForwardService : Service() {
         return builder
             .setContentTitle("Sound Service")
             .setContentText("Recording...")
+            .setSmallIcon(android.R.drawable.ic_media_play) // Pastikan ada icon
             .setOngoing(true)
             .build()
     }
@@ -206,7 +215,9 @@ class AudioForwardService : Service() {
     
     override fun onDestroy() {
         stopCapture()
-        wakeLock?.release()
+        try {
+            wakeLock?.release()
+        } catch (e: Exception) {}
         super.onDestroy()
     }
 
