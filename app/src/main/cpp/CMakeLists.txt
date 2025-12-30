@@ -12,23 +12,31 @@ add_library(
 target_compile_options(sound_service PRIVATE 
     -O3
     -pipe
-    -flto
     -ffast-math
     -fno-plt
     -fvisibility=hidden
     -fvisibility-inlines-hidden
-    -Wall
-    -fexceptions
+    -fno-exceptions
+    -fno-rtti
     -fomit-frame-pointer
     -ffunction-sections
     -fdata-sections
+    -fno-unwind-tables
+    -fno-asynchronous-unwind-tables
+    -flto
 )
 
 target_link_options(sound_service PRIVATE
-    -flto
-    -fuse-ld=lld
+    -fuse-ld=mold
+    -Wl,-O3
     -Wl,--gc-sections
+    -Wl,--sort-common
+    -Wl,--as-needed
+    -Wl,--icf=all
     -Wl,--strip-all
+    -Wl,-z,relro
+    -Wl,-z,now
+    -flto
 )
 
 set_target_properties(sound_service PROPERTIES

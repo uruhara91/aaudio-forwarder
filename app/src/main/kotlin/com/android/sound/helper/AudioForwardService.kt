@@ -51,6 +51,12 @@ class AudioForwardService : Service() {
         }
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        stopCapture()
+        stopSelf()
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()

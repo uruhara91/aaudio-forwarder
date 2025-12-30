@@ -22,7 +22,7 @@ bool NetworkClient::connectToServer(const char* host, int port) {
     setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
     
     // 2. Buffer optimization
-    int bufSize = 32 * 1024; 
+    int bufSize = 16 * 1024; 
     setsockopt(clientSocket, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize));
 
     struct sockaddr_in serverAddr;
