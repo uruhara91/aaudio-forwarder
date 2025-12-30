@@ -27,7 +27,7 @@ target_compile_options(sound_service PRIVATE
 )
 
 target_link_options(sound_service PRIVATE
-    -fuse-ld=mold
+    -fuse-ld=lld
     -Wl,-O3
     -Wl,--gc-sections
     -Wl,--sort-common
