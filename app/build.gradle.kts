@@ -18,7 +18,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags("-O3", "-flto", "-fvisibility=hidden", "-std=c++20", "-fexceptions")
+                cppFlags("-O3", "-flto", "-fvisibility=hidden", "-std=c++20", "-fno-exceptions")
                 arguments("-DANDROID_STL=c++_static")
             }
         }

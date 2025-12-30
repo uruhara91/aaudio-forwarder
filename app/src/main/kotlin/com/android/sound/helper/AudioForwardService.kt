@@ -216,6 +216,7 @@ class AudioForwardService : Service() {
         return builder
             .setContentTitle("Sound Service")
             .setContentText("Recording")
+            .setSmallIcon(android.R.drawable.ic_media_play)
             .setOngoing(true)
             .build()
     }

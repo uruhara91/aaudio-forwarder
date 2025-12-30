@@ -2,9 +2,9 @@ name: Build Audio Forwarder
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, temp ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, temp ]
   workflow_dispatch:
 
 jobs:
