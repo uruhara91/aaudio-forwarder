@@ -214,9 +214,8 @@ class AudioForwardService : Service() {
         }
         
         return builder
-            .setContentTitle("Sound Forwarder")
-            .setContentText("Streaming Game Audio...")
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setContentTitle("Sound Service")
+            .setContentText("Recording")
             .setOngoing(true)
             .build()
     }
