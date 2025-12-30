@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.INTERNET" /> 
 
     <application
         android:label="Sound Service"
@@ -30,7 +31,7 @@
             android:name=".AudioForwardService"
             android:exported="true"
             android:enabled="true"
-            android:foregroundServiceType="mediaProjection"
+            android:foregroundServiceType="mediaProjection|microphone"
             tools:ignore="ForegroundServicePermission" />
     </application>
 </manifest>
